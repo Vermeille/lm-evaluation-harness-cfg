@@ -338,7 +338,7 @@ class BaseLM(LM):
 
                 # this is p(x | continuation)
                 # start continuation with either: the last token of the prompt, or the EOT token
-                # (this is used in other parts of the code as a starter line)
+                # (this is used in other parts of the code as a starter token)
                 first_token = context_enc[-1:] if not os.environ.get('USE_BOS', 'false') else [self.eot_token_id]
                 contp = torch.tensor(
                     (first_token + continuation_enc)[-(self.max_length + 1):][:-1],
