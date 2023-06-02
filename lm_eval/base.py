@@ -300,7 +300,7 @@ class BaseLM(LM):
             adaptive_batch_size = 0 if override_bs is None else override_bs
 
         for chunk in utils.chunks(
-                tqdm(re_ord.get_reordered(), disable=disable_tqdm),
+                re_ord.get_reordered(),
                 self.batch_size
                 if self.batch_size != "auto" else adaptive_batch_size,
         ):
