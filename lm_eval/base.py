@@ -264,6 +264,10 @@ class BaseLM(LM):
             toks = x[1] + x[2]
             return -len(toks), tuple(toks)
 
+        inner_write_f = os.environ.get("INNER_DEBUG_FILE", None)
+        if inner_write_f is not None:
+            inner_write_f_handle = open(inner_write_f, "w")
+
         re_ord = utils.Reorderer(requests, _collate)
 
         # automatic (variable) batch size detection for vectorization
@@ -315,7 +319,7 @@ class BaseLM(LM):
             # tensors, then we pack them together into a batch, call the model, and then pick it all apart
             # again because vectorizing is annoying
 
-            for _, context_enc, continuation_enc in chunk:
+            for orig_inp_text, context_enc, continuation_enc in chunk:
                 # sanity check
                 assert len(context_enc) > 0
                 assert len(continuation_enc) > 0
@@ -339,14 +343,23 @@ class BaseLM(LM):
                 # this is p(x | continuation)
                 # start continuation with either: the last token of the prompt, or the EOT token
                 # (this is used in other parts of the code as a starter token)
-                first_token = context_enc[-1:] if not os.environ.get('USE_BOS', 'false') else [self.eot_token_id]
+                first_token = context_enc[-1:] if not (os.environ.get('USE_BOS', 'false') == 'true') else [self.eot_token_id]
                 contp = torch.tensor(
                     (first_token + continuation_enc)[-(self.max_length + 1):][:-1],
                     dtype=torch.long,
                 )
                 (inplen, ) = inp.shape
-
                 cont = continuation_enc
+
+                if inner_write_f is not None:
+
+                    inner_write_f_handle.write('\n\n----------------------------------------------------------------------\n\n')
+                    inner_write_f_handle.write('ORIG INP PROMPT: ' + orig_inp_text[0].replace('\n', ' ') + '\n')
+                    inner_write_f_handle.write('ORIG INP CONT: ' + orig_inp_text[1].replace('\n', ' ') + '\n')
+                    inner_write_f_handle.write('INP TOKS: ' + ' '.join(list(map(str, inp.tolist()))) + '\n')
+                    inner_write_f_handle.write('INP TOKS DECODED: ' + ' '.join(self.tok_decode(inp)).replace('\n', ' ') + '\n')
+                    inner_write_f_handle.write('CONTP TOKS: ' + ' '.join(list(map(str, contp.tolist()))) + '\n')
+                    inner_write_f_handle.write('CONTP TOKS DECODED: ' + ' '.join(self.tok_decode(contp)).replace('\n', '') + '\n')
 
                 # since in _collate we make sure length is descending, the longest is always the first one.
                 padding_length = (padding_length
@@ -395,22 +408,46 @@ class BaseLM(LM):
 
                 # Slice to original seq length
                 contlen = len(cont_toks)
-                logits = logits[inplen - contlen:inplen].unsqueeze(
-                    0)  # [1, seq, vocab]
+                logits = logits[inplen - contlen:inplen].unsqueeze(0)  # [1, seq, vocab]
                 uncond_logits = uncond_logits[:contlen].unsqueeze(0)
+
+                cont_toks = torch.tensor(cont_toks, dtype=torch.long).unsqueeze(0)  # [1, seq]
+                if inner_write_f is not None:
+                    prompt_true_logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze().tolist()
+                    prompt_true_logits = prompt_true_logits if isinstance(prompt_true_logits, list) else [prompt_true_logits]
+                    uncond_true_logits = torch.gather(uncond_logits, 2, cont_toks.unsqueeze(-1)).squeeze().tolist()  # [1, seq]
+                    uncond_true_logits = uncond_true_logits if isinstance(uncond_true_logits, list) else [uncond_true_logits]
+                    inner_write_f_handle.write(
+                        'PROMPTED LOGITS OF Y_TRUE: ' + ' '.join(
+                            list(map(lambda x: str(float(x)), prompt_true_logits))) + '\n'
+                    )
+                    inner_write_f_handle.write(
+                        'UNPROMPTED LOGITS OF Y_TRUE: ' + ' '.join(
+                            list(map(lambda x: str(float(x)), uncond_true_logits))) + '\n'
+                    )
+                    # inner_write_f_handle.write('prompted logits: ' + str(logits).replace('\n', '') + '\n')
+                    # inner_write_f_handle.write('unprompted logits: ' + str(uncond_logits).replace('\n', '') + '\n')
+                    inner_write_f_handle.write(
+                        'HYPOTHETICAL PROMPTED GENERATION: ' + ' '.join(self.tok_decode(logits.argmax(axis=-1)[0])) + '\n')
+                    inner_write_f_handle.write(
+                        'HYPOTHETICAL UNCONDITIONAL GENERATION: ' + ' '.join(self.tok_decode(uncond_logits.argmax(axis=-1)[0])) + '\n')
 
                 logits = logits * CFG + uncond_logits * (1 - CFG)
 
                 # Check if per-token argmax is exactly equal to continuation
                 greedy_tokens = logits.argmax(dim=-1)
-                cont_toks = torch.tensor(
-                    cont_toks, dtype=torch.long).unsqueeze(0)  # [1, seq]
                 max_equal = (greedy_tokens == cont_toks).all()
+
+                if inner_write_f is not None:
+                    inner_write_f_handle.write('CFG-COMBINED LOGITS: ' + str(logits).replace('\n', '') + '\n')
+                    inner_write_f_handle.write('GREEDY TOKENS: ' + ' '.join(list(map(str, greedy_tokens[0].tolist()))) + '\n')
+                    inner_write_f_handle.write('DECODED GREEDY: ' + ' '.join(self.tok_decode(greedy_tokens[0])) + '\n')
+                    inner_write_f_handle.write('TRUE TOKENS: ' + ' '.join(list(map(str, cont_toks[0].tolist()))) + '\n')
+                    inner_write_f_handle.write('DECODED TRUE: ' + ' '.join(self.tok_decode(cont_toks[0])) + '\n')
 
                 # Obtain log-probs at the corresponding continuation token indices
                 # last_token_slice = logits[:, -1, :].squeeze(0).tolist()
-                logits = torch.gather(
-                    logits, 2, cont_toks.unsqueeze(-1)).squeeze(-1)  # [1, seq]
+                logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(-1)  # [1, seq]
 
                 # Answer: (log prob, is-exact-match)
                 answer = (float(logits.sum()), bool(max_equal))

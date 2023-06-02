@@ -60,18 +60,11 @@ user_prompts = [
 
 class CFGLogits(LogitsWarper):
 
-    def __init__(self, cfg, inputs, model, logits_output_file=None):
+    def __init__(self, cfg, inputs, model):
         self.cfg = cfg
         self.inputs = inputs
         self.model = model
         self.out = None
-        self.logits_output_file = logits_output_file
-
-    def to_file(self, torch_arr, name):
-        with open(self.logits_output_file, 'a') as f:
-            x = torch_arr.cpu().numpy()[0]
-            x = ' '.join(list(map(str, x.tolist())))
-            f.write(f'{name}: {x}\n')
 
     def __call__(self, input_ids, scores):
         if self.cfg == 1:
@@ -89,11 +82,6 @@ class CFGLogits(LogitsWarper):
             # get the last layer of logits
             unconditional_logits = F.log_softmax(self.out.logits[0][-1:], dim=-1)
             scores = self.cfg * scores + (1 - self.cfg) * unconditional_logits
-
-            if self.logits_output_file is not None:
-                self.to_file(scores, 'prompted_logits')
-                self.to_file(unconditional_logits, 'unprompted_logits')
-
         return scores
 
 if __name__ == '__main__':
@@ -112,10 +100,8 @@ if __name__ == '__main__':
     model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision)
 
     for p in args.custom_prompt:
-        output_model_name = args.model.replace('/', '-')
         user_prompt = p if not p.isdigit() else user_prompts[int(p)]
-        prompt_i = len(glob.glob(f'logit-files__{output_model_name}__*.txt'))
-        output_file = f'logit-files__{output_model_name}__{prompt_i}.txt'
+        prompt_i = len(glob.glob('a-*.txt'))
         if not args.dont_use_instruction:
             prompt = ("### Instruction: The prompt below is a question to answer, "
                       "a task to complete, or a conversation to respond to; decide "
@@ -127,18 +113,39 @@ if __name__ == '__main__':
         print(prompt_i, ':', prompt)
         inputs = tokenizer([prompt], return_tensors="pt")
 
-        with open(output_file, 'w') as f:
-            print(prompt, file=f)
-
         # processing for Llama
         inputs.pop('token_type_ids', None)
         print('inputs', inputs)
         l = 128
 
+        # with bos
         outputs = model.generate(
             **inputs,
             max_new_tokens=l,
             min_length=l,
             repetition_penalty=1.2,
-            logits_processor=LogitsProcessorList([CFGLogits(1.5, inputs, model, logits_output_file=output_file)]),
         )
+        with_bos = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
+
+        # without bos
+        inputs['input_ids'] = inputs['input_ids'][:, 1:]
+        inputs['attention_mask'] = inputs['attention_mask'][:, 1:]
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=l,
+            min_length=l,
+            repetition_penalty=1.2,
+            # logits_processor=LogitsProcessorList([CFGLogits(1.5, inputs, model)]),
+        )
+        without_bos = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
+        # shuf = ['cfg', 'no_cfg']
+        # random.shuffle(shuf)
+
+        with open(f'a-{prompt_i}-with-bos.txt', 'w') as f:
+            print(prompt, file=f)
+            print(with_bos, file=f)
+
+        with open(f'a-{prompt_i}-without-bos.txt', 'w') as f:
+            print(prompt, file=f)
+            print(without_bos, file=f)
+

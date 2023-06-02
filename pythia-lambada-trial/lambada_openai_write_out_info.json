@@ -1,0 +1,202 @@
+[
+    {
+        "doc_id": 0,
+        "prompt_0": "“Carlos Rafael Wilson.”\nThe man smiled at him. Carlos didn’t have a clue what was going on. He looked to his manager.\n“Tom here’s just moved into the house at the bottom of the hill.”\n“Oh right.”\n“About two, maybe three, miles away,” Tom said and smiled at Carlos",
+        "prompt_1": "“Carlos Rafael Wilson.”\nThe man smiled at him. Carlos didn’t have a clue what was going on. He looked to his manager.\n“Tom here’s just moved into the house at the bottom of the hill.”\n“Oh right.”\n“About two, maybe three, miles away,” Tom said and smiled at Carlos",
+        "logit_0": 4.659880638122559,
+        "truth": " Carlos",
+        "logit_1": true,
+        "ppl": "4.659880638122559",
+        "acc": "1"
+    },
+    {
+        "doc_id": 1,
+        "prompt_0": "“You wouldn’t dare,” Elijah growled. I squeaked as he was all of a sudden an inch or two behind the rogue. “Tell me, rogue, where is Delilah?” The rogue stiffened. “On behalf of the Vampiric Council,” he whispered. “I hereby order you to tell me the whereabouts of Delilah",
+        "prompt_1": "“You wouldn’t dare,” Elijah growled. I squeaked as he was all of a sudden an inch or two behind the rogue. “Tell me, rogue, where is Delilah?” The rogue stiffened. “On behalf of the Vampiric Council,” he whispered. “I hereby order you to tell me the whereabouts of Delilah",
+        "logit_0": 5.156240463256836,
+        "truth": " Delilah",
+        "logit_1": true,
+        "ppl": "5.156240463256836",
+        "acc": "1"
+    },
+    {
+        "doc_id": 2,
+        "prompt_0": "Bob was pensive for the rest of the evening, talking openly and realistically about his work on the railroad to the four students who appeared enthused over the prospect of high speed rail in their lifetime. Perhaps they just hadn’t done the math.  \nThe couple that accompanied Paul and Debbie got up to leave, they were expecting the girl’s parents to fetch them any moment now. After they had left, Paul and Debbie looked at each other, then at Bob",
+        "prompt_1": "Bob was pensive for the rest of the evening, talking openly and realistically about his work on the railroad to the four students who appeared enthused over the prospect of high speed rail in their lifetime. Perhaps they just hadn’t done the math.  \nThe couple that accompanied Paul and Debbie got up to leave, they were expecting the girl’s parents to fetch them any moment now. After they had left, Paul and Debbie looked at each other, then at Bob",
+        "logit_0": -1.8897485733032227,
+        "truth": " Bob",
+        "logit_1": false,
+        "ppl": "-1.8897485733032227",
+        "acc": "0"
+    },
+    {
+        "doc_id": 3,
+        "prompt_0": "For the hungrier set there seemed to be every kind of fowl, from quail to goose, neatly carved into small pieces so a dancer could eat quickly and return to the floor.\n\nOnce again I wished I was hungry for normal human food. But instead I indulged in a glass of champagne.\n\n\"Hilda, Hilda,\" Bridget called out in a voice that carried well considering how crowded the space was. A beautiful girl in a rose-pink gown turned from her gentleman friend, face lighting up when she saw Bridget",
+        "prompt_1": "For the hungrier set there seemed to be every kind of fowl, from quail to goose, neatly carved into small pieces so a dancer could eat quickly and return to the floor.\n\nOnce again I wished I was hungry for normal human food. But instead I indulged in a glass of champagne.\n\n\"Hilda, Hilda,\" Bridget called out in a voice that carried well considering how crowded the space was. A beautiful girl in a rose-pink gown turned from her gentleman friend, face lighting up when she saw Bridget",
+        "logit_0": -0.8834619522094727,
+        "truth": " Bridget",
+        "logit_1": false,
+        "ppl": "-0.8834619522094727",
+        "acc": "0"
+    },
+    {
+        "doc_id": 4,
+        "prompt_0": "Every few hours, one of them wheeled in the portable ultrasound machine -- Josh during the day, and Nellie in the evenings.  Lashonda couldn't understand the monochrome squiggles on its greenish-black screen, but she could read the expression on Josh's face.  The set of his jowls was serious; the angle of his brows concerned.\n\"Of course,\" he said, his face transforming to jovial jocularity, \"we can't really tell from the ultrasound",
+        "prompt_1": "Every few hours, one of them wheeled in the portable ultrasound machine -- Josh during the day, and Nellie in the evenings.  Lashonda couldn't understand the monochrome squiggles on its greenish-black screen, but she could read the expression on Josh's face.  The set of his jowls was serious; the angle of his brows concerned.\n\"Of course,\" he said, his face transforming to jovial jocularity, \"we can't really tell from the ultrasound",
+        "logit_0": 2.48345947265625,
+        "truth": " ultrasound",
+        "logit_1": true,
+        "ppl": "2.48345947265625",
+        "acc": "1"
+    },
+    {
+        "doc_id": 5,
+        "prompt_0": "\"Erin talked to a reporter,\" Liz told him. Erin was Brady's ex-girlfriend. They had broken up after he had visited Liz in October.\n\n\"What makes you think that? She's not the type to get involved with the press.\"\n\n\"She is the press,\" Liz reminded him. Erin worked as an anchor for Baltimore Mornings, though it was kind of a stretch in Liz's mind to call her press",
+        "prompt_1": "\"Erin talked to a reporter,\" Liz told him. Erin was Brady's ex-girlfriend. They had broken up after he had visited Liz in October.\n\n\"What makes you think that? She's not the type to get involved with the press.\"\n\n\"She is the press,\" Liz reminded him. Erin worked as an anchor for Baltimore Mornings, though it was kind of a stretch in Liz's mind to call her press",
+        "logit_0": -6.110564708709717,
+        "truth": " press",
+        "logit_1": false,
+        "ppl": "-6.110564708709717",
+        "acc": "0"
+    },
+    {
+        "doc_id": 6,
+        "prompt_0": "But then in the end she didn't have to.\n\n\"This is the daddy I want,\" Jessie said in a voice as clear as crystal. If Meg had wanted to be discreet about the drawing those hopes were dashed immediately. Jessie pointed to the stick figure of the man. \"Mommy, when are you going to get me a daddy",
+        "prompt_1": "But then in the end she didn't have to.\n\n\"This is the daddy I want,\" Jessie said in a voice as clear as crystal. If Meg had wanted to be discreet about the drawing those hopes were dashed immediately. Jessie pointed to the stick figure of the man. \"Mommy, when are you going to get me a daddy",
+        "logit_0": 3.226799488067627,
+        "truth": " daddy",
+        "logit_1": true,
+        "ppl": "3.226799488067627",
+        "acc": "1"
+    },
+    {
+        "doc_id": 7,
+        "prompt_0": "A small scream escaped her, but she landed in a shallow stream of frigid water. The fall had only been a meter or so.\n\n\"Watch out!\" Gray called.\n\nRachel rolled clear as the others slid, skidded, and dropped into the water with her. Rachel retrieved her cell phone from the edge of the stream",
+        "prompt_1": "A small scream escaped her, but she landed in a shallow stream of frigid water. The fall had only been a meter or so.\n\n\"Watch out!\" Gray called.\n\nRachel rolled clear as the others slid, skidded, and dropped into the water with her. Rachel retrieved her cell phone from the edge of the stream",
+        "logit_0": 3.0299129486083984,
+        "truth": " stream",
+        "logit_1": true,
+        "ppl": "3.0299129486083984",
+        "acc": "1"
+    },
+    {
+        "doc_id": 8,
+        "prompt_0": "Not only did he not fully trust the constable, but he also doubted the little man’s abilities to comprehend it. “We shall see what turns up.” \n“Where are you going, Inspector?”\nHe was turning off the path, towards a certain manor. “I have an important question to ask the good marquis.”\n\n~~~\n\nThe sky was beginning to darken when he was ushered into the sitting room to wait for the marquis",
+        "prompt_1": "Not only did he not fully trust the constable, but he also doubted the little man’s abilities to comprehend it. “We shall see what turns up.” \n“Where are you going, Inspector?”\nHe was turning off the path, towards a certain manor. “I have an important question to ask the good marquis.”\n\n~~~\n\nThe sky was beginning to darken when he was ushered into the sitting room to wait for the marquis",
+        "logit_0": 5.839181423187256,
+        "truth": " marquis",
+        "logit_1": true,
+        "ppl": "5.839181423187256",
+        "acc": "1"
+    },
+    {
+        "doc_id": 9,
+        "prompt_0": "Never did I have a daughter.  Now, I would appreciate it if you would change me.\"  Dad continued to order me.\nI rested my hand on Dad's head and rubbed his clammy skin.  \"Daddy, it's me, Stacey your daughter.  Don't you remember me?  I am your only child; you didn't have any sons",
+        "prompt_1": "Never did I have a daughter.  Now, I would appreciate it if you would change me.\"  Dad continued to order me.\nI rested my hand on Dad's head and rubbed his clammy skin.  \"Daddy, it's me, Stacey your daughter.  Don't you remember me?  I am your only child; you didn't have any sons",
+        "logit_0": -2.6981124877929688,
+        "truth": " sons",
+        "logit_1": false,
+        "ppl": "-2.6981124877929688",
+        "acc": "0"
+    },
+    {
+        "doc_id": 10,
+        "prompt_0": "“All right,” she said quickly, starting to rise. “Let’s go. I think I—”\n“Not me,” said Kendril. “You.”\nJade stared at him. “I can’t leave you here. You’ll die.”\nHis face flinched with pain. “I’ve got a crossbow bolt in my side, Jade",
+        "prompt_1": "“All right,” she said quickly, starting to rise. “Let’s go. I think I—”\n“Not me,” said Kendril. “You.”\nJade stared at him. “I can’t leave you here. You’ll die.”\nHis face flinched with pain. “I’ve got a crossbow bolt in my side, Jade",
+        "logit_0": 2.5432469844818115,
+        "truth": " Jade",
+        "logit_1": false,
+        "ppl": "2.5432469844818115",
+        "acc": "0"
+    },
+    {
+        "doc_id": 11,
+        "prompt_0": "I nodded, both thankful and discouraged at the news. At least she was no worse.\n\nA few seconds passed. The room was quiet except for the sound of the ventilator.\n\n\"Eva?\" Steve whispered.\n\nMy heart broke as her name came from his lips, his heartache unbearable.\n\n\"Yeah, your granddaughter's name is Eva",
+        "prompt_1": "I nodded, both thankful and discouraged at the news. At least she was no worse.\n\nA few seconds passed. The room was quiet except for the sound of the ventilator.\n\n\"Eva?\" Steve whispered.\n\nMy heart broke as her name came from his lips, his heartache unbearable.\n\n\"Yeah, your granddaughter's name is Eva",
+        "logit_0": 6.201301097869873,
+        "truth": " Eva",
+        "logit_1": true,
+        "ppl": "6.201301097869873",
+        "acc": "1"
+    },
+    {
+        "doc_id": 12,
+        "prompt_0": "One was a girl of nine or ten with her father's straight, fine brown hair. Her brother was a few years younger. They stared at me with wide eyes, at Zach and then up at their father. Sam's lined face was pale and his kids began to cry.\n\"These are my children,\" said Sam",
+        "prompt_1": "One was a girl of nine or ten with her father's straight, fine brown hair. Her brother was a few years younger. They stared at me with wide eyes, at Zach and then up at their father. Sam's lined face was pale and his kids began to cry.\n\"These are my children,\" said Sam",
+        "logit_0": 1.7341029644012451,
+        "truth": " Sam",
+        "logit_1": true,
+        "ppl": "1.7341029644012451",
+        "acc": "1"
+    },
+    {
+        "doc_id": 13,
+        "prompt_0": "“I’m telling them what went down in the graveyard,” the storyteller explains.\n“In the graveyard?”  Geist asks, turning to Cale with a puzzled expression.\n“You haven’t heard?”  Cale blurts out, shocked there is anyone who isn’t aware of the fall of Captain Keeta.  “Aqua lives in the housing closest to the graveyard",
+        "prompt_1": "“I’m telling them what went down in the graveyard,” the storyteller explains.\n“In the graveyard?”  Geist asks, turning to Cale with a puzzled expression.\n“You haven’t heard?”  Cale blurts out, shocked there is anyone who isn’t aware of the fall of Captain Keeta.  “Aqua lives in the housing closest to the graveyard",
+        "logit_0": 4.509336471557617,
+        "truth": " graveyard",
+        "logit_1": true,
+        "ppl": "4.509336471557617",
+        "acc": "1"
+    },
+    {
+        "doc_id": 14,
+        "prompt_0": "\"The lad may be a self-absorbed brat, but he's no devil. Have a drink, Derek. It might loosen you up.\"\n\nI watched with disgust as my own father brushed off the thought of having given away his own daughter to the nobleman's son. I gritted my teeth, knowing fully well that the Maslens were far from noble",
+        "prompt_1": "\"The lad may be a self-absorbed brat, but he's no devil. Have a drink, Derek. It might loosen you up.\"\n\nI watched with disgust as my own father brushed off the thought of having given away his own daughter to the nobleman's son. I gritted my teeth, knowing fully well that the Maslens were far from noble",
+        "logit_0": 2.4116458892822266,
+        "truth": " noble",
+        "logit_1": true,
+        "ppl": "2.4116458892822266",
+        "acc": "1"
+    },
+    {
+        "doc_id": 15,
+        "prompt_0": "He guided her inside, barely touching her except for his grip on her hand, but the heat from his body hovered and invaded her until she leaned into his side, wanting that wonderful jolt of awareness all over again.\n\nConversation stopped when she and Dillon re-entered the living room, and once again there was open speculation on the faces of the Colters.\n\nSeth's gaze dropped to her and Dillon's linked hands. His expression remained neutral, but his eyes told a different story. There was uncertainty there, and forgetting that Dillon was going to inform him that she was taking a ride with him, she dropped Dillon's hand and went straight to Seth",
+        "prompt_1": "He guided her inside, barely touching her except for his grip on her hand, but the heat from his body hovered and invaded her until she leaned into his side, wanting that wonderful jolt of awareness all over again.\n\nConversation stopped when she and Dillon re-entered the living room, and once again there was open speculation on the faces of the Colters.\n\nSeth's gaze dropped to her and Dillon's linked hands. His expression remained neutral, but his eyes told a different story. There was uncertainty there, and forgetting that Dillon was going to inform him that she was taking a ride with him, she dropped Dillon's hand and went straight to Seth",
+        "logit_0": 5.904469966888428,
+        "truth": " Seth",
+        "logit_1": true,
+        "ppl": "5.904469966888428",
+        "acc": "1"
+    },
+    {
+        "doc_id": 16,
+        "prompt_0": "Is it because of the toad in my throat?\"\nAt this, Madame Butterflies descended to her chair and studied Gladys thoughtfully, first with one set of eyes, then another.\nFinally she said, \"It must have been the spinach.\"\n\"Really?\" said Gladys. \"Do you mean the toad didn't like the spinach",
+        "prompt_1": "Is it because of the toad in my throat?\"\nAt this, Madame Butterflies descended to her chair and studied Gladys thoughtfully, first with one set of eyes, then another.\nFinally she said, \"It must have been the spinach.\"\n\"Really?\" said Gladys. \"Do you mean the toad didn't like the spinach",
+        "logit_0": 5.58495569229126,
+        "truth": " spinach",
+        "logit_1": true,
+        "ppl": "5.58495569229126",
+        "acc": "1"
+    },
+    {
+        "doc_id": 17,
+        "prompt_0": "I see her embarrassment.\n“Paul,” the predator supplies his name but does not offer to shake hands. Instead he sits back in his chair and deliberately gives John the once over. A hint of… aggression in Paul’s attitude seems to annoy the dog.\nLooking a little miffed and then worried, John says, “Nice to meet you, Paul",
+        "prompt_1": "I see her embarrassment.\n“Paul,” the predator supplies his name but does not offer to shake hands. Instead he sits back in his chair and deliberately gives John the once over. A hint of… aggression in Paul’s attitude seems to annoy the dog.\nLooking a little miffed and then worried, John says, “Nice to meet you, Paul",
+        "logit_0": 3.4975085258483887,
+        "truth": " Paul",
+        "logit_1": true,
+        "ppl": "3.4975085258483887",
+        "acc": "1"
+    },
+    {
+        "doc_id": 18,
+        "prompt_0": "She pointed at my charm bracelets.\nI moved my wrists, and the multi-colored vintage beads and stars hanging from the gold chain jingled. “From a gypsy trader I know.”\n“Seriously?”\n“Uh-huh. A cousin of my grandmother’s.”\nKylie’s eyes rounded. “So you’re, like, a real gypsy",
+        "prompt_1": "She pointed at my charm bracelets.\nI moved my wrists, and the multi-colored vintage beads and stars hanging from the gold chain jingled. “From a gypsy trader I know.”\n“Seriously?”\n“Uh-huh. A cousin of my grandmother’s.”\nKylie’s eyes rounded. “So you’re, like, a real gypsy",
+        "logit_0": 6.546463966369629,
+        "truth": " gypsy",
+        "logit_1": true,
+        "ppl": "6.546463966369629",
+        "acc": "1"
+    },
+    {
+        "doc_id": 19,
+        "prompt_0": "We got to the shop a little before nine. Carole was sitting at the cash register, talking to Karl Schindler about the upcoming book talk at the library, featuring Mona Dubiel, author of Thunder in the Valley. If I didn’t know better, I’d think he had the hots for my friend. And judging from the rosy cheeks on Carole, it might be mutual",
+        "prompt_1": "We got to the shop a little before nine. Carole was sitting at the cash register, talking to Karl Schindler about the upcoming book talk at the library, featuring Mona Dubiel, author of Thunder in the Valley. If I didn’t know better, I’d think he had the hots for my friend. And judging from the rosy cheeks on Carole, it might be mutual",
+        "logit_0": -2.469912528991699,
+        "truth": " mutual",
+        "logit_1": false,
+        "ppl": "-2.469912528991699",
+        "acc": "0"
+    }
+]

@@ -255,9 +255,7 @@ def evaluate(
                 requests_origin[req.request_type].append((i, task_name, doc, doc_id))
 
                 if write_out:
-                    prompt_details[-1][f"prompt_{i}"] = "".join(
-                        (map(lambda x: "".join(x), req.args))
-                    )
+                    prompt_details[-1][f"prompt_{i}"] = "".join((map(lambda x: "".join(x), req.args)))
 
         if write_out:
             write_out_info[task_name] = prompt_details
@@ -267,9 +265,7 @@ def evaluate(
         from lm_eval.decontamination.decontaminate import get_train_overlap
 
         print("Finding train/test overlap, please wait...")
-        overlaps = get_train_overlap(
-            docs_for_decontamination, decontamination_ngrams_path, limit
-        )
+        overlaps = get_train_overlap(docs_for_decontamination, decontamination_ngrams_path, limit)
 
     # all responses for each (task, doc)
     process_res_queue = collections.defaultdict(list)
@@ -296,9 +292,7 @@ def evaluate(
                 if isinstance(task, lm_eval.base.MultipleChoiceTask):
                     write_out_info[task_name][doc_id]["truth"] = doc["gold"]
                 elif isinstance(task, lm_eval.tasks.winogrande.Winogrande):
-                    write_out_info[task_name][doc_id]["truth"] = task.answer_to_num[
-                        doc["answer"]
-                    ]
+                    write_out_info[task_name][doc_id]["truth"] = task.answer_to_num[doc["answer"]]
                 else:
                     write_out_info[task_name][doc_id]["truth"] = task.doc_to_target(doc)
 
