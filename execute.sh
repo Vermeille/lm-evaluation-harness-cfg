@@ -9,5 +9,4 @@ for cfg in 3; do
         --model_args pretrained=ComCom/gpt2-medium,use_accelerate=True \
         --tasks hellaswag,winogrande,lambada_openai,boolq,piqa,sciq,arc_easy,arc_challenge,triviaqa \
         --device cuda:0 | tee cfg=$cfg.log
-
 done

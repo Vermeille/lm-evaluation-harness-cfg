@@ -328,15 +328,19 @@ class BaseLM(LM):
                 # logits   1 2 3|4 5 6 7 8 9   <- the ctx half gets tossed out by the
                 # cont_toks      4 5 6 7 8 9      [:, -len(continuation_enc):, :self.vocab_size] slice
 
+                # for CFG:
+                # this is p(x | prompt, continuation)
                 # when too long to fit in context, truncate from the left
                 inp = torch.tensor(
-                    (context_enc +
-                     continuation_enc)[-(self.max_length + 1):][:-1],
+                    (context_enc + continuation_enc)[-(self.max_length + 1):][:-1],
                     dtype=torch.long,
                 )
+
+                # this is p(x | continuation)
+                # start continuation with either: the last token of the prompt, or the EOT token
+                first_token = context_enc[-1:] if not os.environ.get('USE_BOS', 'false') else [self.eot_token_id]
                 contp = torch.tensor(
-                    (context_enc[-1:] +
-                     continuation_enc)[-(self.max_length + 1):][:-1],
+                    (first_token + continuation_enc)[-(self.max_length + 1):][:-1],
                     dtype=torch.long,
                 )
                 (inplen, ) = inp.shape
@@ -386,7 +390,7 @@ class BaseLM(LM):
                  _), logits, uncond_logits, inp, inplen, cont_toks in zip(
                      chunk, multi_logits, uncond_multi_logits, inps, inplens,
                      cont_toks_list):
-                CFG = float(os.environ['CFG'])
+                CFG = float(os.environ.get('CFG', 1))
 
                 # Slice to original seq length
                 contlen = len(cont_toks)
@@ -411,9 +415,9 @@ class BaseLM(LM):
                 answer = (float(logits.sum()), bool(max_equal))
 
                 # partial caching
+                self.cache_hook.add_partial("loglikelihood", cache_key, answer)
                 if cache_key is not None:
-                    self.cache_hook.add_partial("loglikelihood", cache_key,
-                                                answer)
+                    pass
 
                 res.append(answer)
 

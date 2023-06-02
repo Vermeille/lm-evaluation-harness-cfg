@@ -57,7 +57,7 @@ def oa_completion(**kwargs):
 class GPT3LM(BaseLM):
     REQ_CHUNK_SIZE = 20
 
-    def __init__(self, engine, truncate=False):
+    def __init__(self, engine, truncate=False, *args, **kwargs):
         """
 
         :param engine: str
