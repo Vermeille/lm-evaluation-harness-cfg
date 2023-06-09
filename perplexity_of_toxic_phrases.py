@@ -88,9 +88,10 @@ class ToxicityDataset(Dataset):
                  toxicity_file='allenai/real-toxicity-prompts',
                  tokenizer=None,
                  toxicity_filter=.5,
+                 pos_or_neg='positive',
                  system_prompt=None
                  ):
-        self.real_toxicity_df = (
+        real_toxicity_df = (
             load_dataset(toxicity_file)['train']
             .to_pandas()
             .pipe(lambda df:
@@ -111,8 +112,11 @@ class ToxicityDataset(Dataset):
                      'prompt_severe_toxicity',
                      ]
             ]
-            .loc[lambda df: df['prompt_severe_toxicity'] > toxicity_filter]
         )
+        if pos_or_neg == 'positive':
+            self.real_toxicity_df = real_toxicity_df.loc[lambda df: df['prompt_severe_toxicity'] > toxicity_filter]
+        else:
+            self.real_toxicity_df = real_toxicity_df.loc[lambda df: df['prompt_severe_toxicity'] < toxicity_filter]
         self.tokenizer = tokenizer
 
     def __len__(self):
@@ -145,10 +149,18 @@ if __name__ == '__main__':
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    dataset = ToxicityDataset(
+    toxic_continuation_dataset = ToxicityDataset(
         tokenizer=tokenizer,
         toxicity_file=args.dataset,
         system_prompt=args.system_prompt,
+        pos_or_neg='positive'
+    )
+    non_toxic_continuation_dataset = ToxicityDataset(
+        tokenizer=tokenizer,
+        toxicity_file=args.dataset,
+        system_prompt=args.system_prompt,
+        toxicity_filter=.2,
+        pos_or_neg='negative'
     )
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     hf_model = AutoModelForCausalLM.from_pretrained(args.model, trust_remote_code=True)
@@ -156,27 +168,31 @@ if __name__ == '__main__':
     cfg_range = [args.cfg]
 
     for cfg in [1, 1.25, 1.5, 1.75, 2, 3, 4, 5, 6, 7]:
-        all_ppls = []
         print('Calculating perplexities...')
         model.cfg = cfg
-        for i in tqdm(range(len(dataset))):
-            datapoint = dataset[i]
-            tensors = {k: v.to(args.device) for k, v in datapoint.items()}
-            ppl_for_sequence = model.calculate_sequence_perplexity(**tensors, use_cache=True)
-            all_ppls.append(ppl_for_sequence.item())
+        for dataset_name, dataset in [
+            ('toxic', toxic_continuation_dataset),
+            ('non-toxic', non_toxic_continuation_dataset)
+        ]:
+            all_ppls = []
+            for i in tqdm(range(len(dataset))):
+                datapoint = dataset[i]
+                tensors = {k: v.to(args.device) for k, v in datapoint.items()}
+                ppl_for_sequence = model.calculate_sequence_perplexity(**tensors, use_cache=True)
+                all_ppls.append(ppl_for_sequence.item())
 
-        all_ppls = list(map(float, all_ppls))
-        print(
-            f'CFG: {cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
-        )
-
-        with open(args.results_file, 'a') as f:
-            f.write(
-                json.dumps({
-                    'cfg': cfg,
-                    'mean_ppl': sum(all_ppls) / len(all_ppls),
-                    'all_ppls': all_ppls,
-                    'prompt': args.system_prompt,
-                }) + '\n'
+            all_ppls = list(map(float, all_ppls))
+            print(
+                f'{dataset_name}. CFG: {cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
             )
-        
+
+            with open(f"{args.results_file}", 'a') as f:
+                f.write(
+                    json.dumps({
+                        'cfg': cfg,
+                        'mean_ppl': sum(all_ppls) / len(all_ppls),
+                        'all_ppls': all_ppls,
+                        'prompt': args.system_prompt,
+                        'dataset': dataset_name,
+                    }) + '\n'
+                )
