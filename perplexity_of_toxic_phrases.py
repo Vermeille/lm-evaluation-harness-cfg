@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 class CFGModelForCausalLM(nn.Module):
     """Stub of a Model Class that produces the likelihood of a prompt + continuation under a set CFG value."""
 
-    def __init__(self, hf_causal_model, cfg):
+    def __init__(self, hf_causal_model, cfg=None):
         super().__init__()
         self.hf_causal_model = hf_causal_model
         self.cfg = cfg
@@ -150,12 +150,13 @@ if __name__ == '__main__':
     )
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     hf_model = AutoModelForCausalLM.from_pretrained(args.model, trust_remote_code=True)
-    model = CFGModelForCausalLM(hf_model, args.cfg).to(args.device)
+    model = CFGModelForCausalLM(hf_model).to(args.device)
     cfg_range = [args.cfg]
 
     for cfg in [1, 1.25, 1.5, 1.75, 2, 3, 4, 5, 6, 7]:
         all_ppls = []
         print('Calculating perplexities...')
+        model.cfg = cfg
         for i in tqdm(range(len(dataset))):
             datapoint = dataset[i]
             tensors = {k: v.to(args.device) for k, v in datapoint.items()}
@@ -164,5 +165,5 @@ if __name__ == '__main__':
 
         all_ppls = list(map(float, all_ppls))
         print(
-            f'CFG: {args.cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
+            f'CFG: {cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
         )
