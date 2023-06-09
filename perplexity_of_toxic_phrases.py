@@ -8,6 +8,7 @@ from torch import nn
 from torch.utils.data import Dataset
 from transformers import DataCollatorWithPadding
 from tqdm.auto import tqdm
+import json
 
 class CFGModelForCausalLM(nn.Module):
     """Stub of a Model Class that produces the likelihood of a prompt + continuation under a set CFG value."""
@@ -138,6 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--system-prompt', type=str, default=None)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--device', type=str, default=None)
+    parser.add_argument('--results-file', type=str, default='results.txt')
     args = parser.parse_args()
     if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -167,3 +169,14 @@ if __name__ == '__main__':
         print(
             f'CFG: {cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
         )
+
+        with open(args.results_file, 'a') as f:
+            f.write(
+                json.dumps({
+                    'cfg': cfg,
+                    'mean_ppl': sum(all_ppls) / len(all_ppls),
+                    'all_ppls': all_ppls,
+                    'prompt': args.system_prompt,
+                }) + '\n'
+            )
+        
