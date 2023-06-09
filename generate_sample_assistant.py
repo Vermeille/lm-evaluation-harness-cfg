@@ -1,145 +1,138 @@
-import random
-import sys
-from transformers import (GPT2Tokenizer, AutoModelForCausalLM,
-                          GPTNeoXForCausalLM, AutoTokenizer)
-import numpy as np
-import torch
+from transformers import (AutoModelForCausalLM, AutoTokenizer)
 from transformers import LogitsWarper, LogitsProcessorList
-from transformers.generation import LogitNormalization
 import torch.nn.functional as F
 import glob
+from datasets import load_dataset
+import pandas as pd
+from transformers import (
+    LogitsWarper, LogitsProcessorList,
+    MinLengthLogitsProcessor, TemperatureLogitsWarper,
+    TopKLogitsWarper, TopPLogitsWarper,
+    TypicalLogitsWarper,
+    RepetitionPenaltyLogitsProcessor
+)
 
-user_prompts = [
-    'Why did the chicken cross the road?',
-    'What is the meaning of life?',
-    'What is the answer to life, the universe, and everything?',
-    'What is the best way to cook a steak?',
-    'How do you make a pizza?',
-    'What is the best way to make a pizza?',
-    'Why is the sky blue?',
-    'Who is the best basketball player of all time?',
-    'What are trans fats?',
-    'What are transformers?',
-    'What are neural networks?',
-    'What is the best way to learn a language?',
-    'Who is Optimus Prime?',
-    'Write a haiku about the meaning of life.',
-    'Write the python code to print the first 100 prime numbers.',
-    'Give me a recipe for a delicious meal.',
-    'How to implement authentication with Flask?',
-    'What is the easiest python library to bootstrap a web app?',
-    'I am in France and I want to be polite, give me some advice.',
-    'Is Yann LeCun the father of deep learning?',
-    'Is Yann LeCun the father of convolutional neural networks?',
-    'Is Yann LeCun great because he is French, or is he French because he is great?',
-    'Is Yann LeCun great because he is French, or despite being French?',
-    'Explain the algorithm AlphaZero in few sentences.',
-    'I want to learn how to play chess, what is the best way to start?',
-    'How are metal vocalists able to scream for so long?',
-    'What is the best way to learn how to sing?',
-    'What is the best way to learn how to play the guitar?',
-    'Give me compelling ideas for a startup.',
-    'Give me compelling ideas for a D&D campaign in a medfan version of Italy.',
-    'Give me compelling ideas for a D&D campaign in a medfan version of Greece.',
-    'Give me compelling ideas for a D&D campaign in a medfan version of France.',
-    'Write the lyrics of a death metal song about chickens.',
-    'Write the lyrics of a death metal song about AI research.',
-    'What kind of present should I buy for my 30yo wife who loves dancing, D&D, board games, and soft metal music?',
-    'What kind of present should I buy for my 30yo husband who loves AI, D&D, board games, and metal music?',
-    'Are nerds trendy?',
-    'What is a taxonomy?',
-    'What are the main differences between driving in France and in the US?',
-    'Who are artists that are similar to Gojira?',
-    'Who are artists that are famous in the US but not abroad?',
-    'Suggest a unique and compelling plot for a scifi novel where people can text each other through time.',
-    'Suggest a unique and compelling plot for a scifi novel where people can text each other through time, but only in the past.',
-    'What was the Cambridge Analytica scandal?',
-    'How to choose a good learning rate?',
-]
+
+def load_toxicity_dataset():
+    real_toxicity = load_dataset('allenai/real-toxicity-prompts')
+    real_toxicity_df = (
+        real_toxicity['train']
+             .to_pandas()
+             .pipe(lambda df:
+                   pd.concat([
+                     df['prompt']
+                       .pipe(lambda s: pd.DataFrame(s.tolist()))
+                       .rename(columns=lambda x: f'prompt_{x}'),
+                     df['continuation']
+                       .pipe(lambda s: pd.DataFrame(s.tolist()))
+                       .rename(columns=lambda x: f'continuation_{x}'),
+                    df['challenging']
+                   ], axis=1)
+                   )
+                    [['prompt_text', 'continuation_text', 'prompt_severe_toxicity', 'continuation_severe_toxicity', 'challenging']]
+                    .loc[lambda df: df['challenging'] == True]
+                    .assign(combined_severe_toxicity=lambda df: df['prompt_severe_toxicity'] * df['continuation_severe_toxicity'])
+                    .sort_values('prompt_severe_toxicity', ascending=False)
+    )
+    return real_toxicity_df
 
 
 class CFGLogits(LogitsWarper):
 
-    def __init__(self, cfg, inputs, model, logits_output_file=None):
+    def __init__(self, cfg, inputs_sans_prompt, model):
         self.cfg = cfg
-        self.inputs = inputs
+        self.inputs_sans_prompt = inputs_sans_prompt
         self.model = model
         self.out = None
-        self.logits_output_file = logits_output_file
 
-    def to_file(self, torch_arr, name):
-        with open(self.logits_output_file, 'a') as f:
-            x = torch_arr.cpu().numpy()[0]
-            x = ' '.join(list(map(str, x.tolist())))
-            f.write(f'{name}: {x}\n')
-
-    def __call__(self, input_ids, scores):
+    def __call__(self, input_ids_with_prompt, scores):
         if self.cfg == 1:
-            return scores
-        prompt_len = len(self.inputs["input_ids"][0])
+            return F.log_softmax(scores, dim=-1)
         scores = F.log_softmax(scores, dim=-1)
-        if self.cfg != 1:
-            if self.out is None:
-                # model p(x_i | x_{<i} ) by cutting out the prompt (except the last letter of it).
-                self.out = self.model(input_ids[:, prompt_len - 1:])
-            else:
-                # model p(x_i | x_{<i} ) by taking the last generation, and then feeding in past_key_values.
-                self.out = self.model(input_ids[:, -1:], past_key_values=self.out.past_key_values)
+        if self.out is None:
+            self.out = self.model(self.inputs_sans_prompt, use_cache=True)
+        else:
+            self.out = self.model(
+                input_ids_with_prompt[:, -1:], use_cache=True, past_key_values=self.out.past_key_values
+            )
+        unconditional_logits = F.log_softmax(self.out.logits[0][-1:], dim=-1)
 
-            # get the last layer of logits
-            unconditional_logits = F.log_softmax(self.out.logits[0][-1:], dim=-1)
-            scores = self.cfg * scores + (1 - self.cfg) * unconditional_logits
+        out = self.cfg * (scores - unconditional_logits) + unconditional_logits
+        return F.log_softmax(out, dim=-1)
 
-            if self.logits_output_file is not None:
-                self.to_file(scores, 'prompted_logits')
-                self.to_file(unconditional_logits, 'unprompted_logits')
-
-        return scores
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=float, default=1.5)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--model', type=str, default='nomic-ai/gpt4all-j')
-    parser.add_argument('--revision', type=str, default=None)  # "v1.3-groovy"
+    parser.add_argument('--model', type=str, default="nomic-ai/gpt4all-falcon")
+    parser.add_argument('--revision', type=str, default=None)
     parser.add_argument('--remove-bos', action='store_true', help='Test to see whether Llama needs BOS.')
     parser.add_argument('--dont-use-instruction', action='store_true')
     parser.add_argument('--system-prompt', type=str, default=None)
     parser.add_argument('--custom-prompt', nargs='+', default=['0'])
     args = parser.parse_args()
 
+    dataset_df = load_toxicity_dataset()
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision)
+    model = AutoModelForCausalLM.from_pretrained(args.model, trust_remote_code=True)
 
-    for p in args.custom_prompt:
-        output_model_name = args.model.replace('/', '-')
-        user_prompt = p if not p.isdigit() else user_prompts[int(p)]
-        prompt_i = len(glob.glob(f'logit-files__{output_model_name}__*.txt'))
-        output_file = f'logit-files__{output_model_name}__{prompt_i}.txt'
-        if not args.dont_use_instruction:
-            prompt = ("### Instruction: The prompt below is a question to answer, "
-                      "a task to complete, or a conversation to respond to; decide "
-                      "which and write an appropriate response.\n"
-                      f"### Prompt: {user_prompt}\n### Response:")
-        else:
-            prompt = user_prompt
+    for custom_prompt in args.custom_prompt:
+        file_pattern = f'assistant-outputs/{args.model.replace("/", "-")}__*.txt'
+        num_output_files = len(glob.glob(file_pattern))
+        output_fn = f'assistant-outputs/{args.model.replace("/", "-")}__{num_output_files}.txt'
 
-        print(prompt_i, ':', prompt)
-        inputs = tokenizer([prompt], return_tensors="pt")
+        if custom_prompt.isdigit():
+            custom_prompt = dataset_df.iloc[int(custom_prompt)]['prompt_text']
 
-        with open(output_file, 'w') as f:
-            print(prompt, file=f)
-
-        # processing for Llama
-        inputs.pop('token_type_ids', None)
-        print('inputs', inputs)
-        l = 128
-
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=l,
-            min_length=l,
-            repetition_penalty=1.2,
-            logits_processor=LogitsProcessorList([CFGLogits(1.5, inputs, model, logits_output_file=output_file)]),
+        prompt = (
+            f"### Instruction: {args.system_prompt}, "
+            f"### Prompt: {custom_prompt}"
+            f"### Response:"
         )
+        prompt_uncond = (
+            f"### Prompt: {custom_prompt}"
+            f"### Response:"
+        )
+
+        inputs_cfg = tokenizer([prompt], return_tensors="pt")
+        inputs_cfg.pop('token_type_ids', None)
+        inputs_uncond = tokenizer([prompt_uncond], return_tensors="pt")
+        inputs_uncond.pop('token_type_ids', None)
+        cfgprocessor = CFGLogits(args.cfg, inputs_uncond['input_ids'], model)
+
+        l = 64
+        cfg_outputs = model.generate(
+            **inputs_cfg,
+            max_new_tokens=l,
+            logits_processor=LogitsProcessorList([
+                cfgprocessor,
+                MinLengthLogitsProcessor(l, eos_token_id=tokenizer.eos_token_id),
+                TemperatureLogitsWarper(0.8),
+                TopPLogitsWarper(0.95),
+            ]),
+            do_sample=True,
+        )
+
+        prompted_outputs = model.generate(
+            **inputs_cfg,
+            max_new_tokens=l,
+            logits_processor=LogitsProcessorList([
+                MinLengthLogitsProcessor(l, eos_token_id=tokenizer.eos_token_id),
+                TemperatureLogitsWarper(0.8),
+                TopPLogitsWarper(0.95),
+            ]),
+            do_sample=True,
+        )
+
+        with open(output_fn, 'w') as f:
+            f.write('### Instruction\n')
+            f.write(prompt)
+            f.write('\n\n')
+            f.write('### CFG\n')
+            f.write(tokenizer.decode(cfg_outputs[0]))
+            f.write('\n\n')
+            f.write('### Prompted\n')
+            f.write(tokenizer.decode(prompted_outputs[0]))
+            f.write('\n\n')

@@ -151,14 +151,18 @@ if __name__ == '__main__':
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     hf_model = AutoModelForCausalLM.from_pretrained(args.model, trust_remote_code=True)
     model = CFGModelForCausalLM(hf_model, args.cfg).to(args.device)
+    cfg_range = [args.cfg]
 
+    for cfg in [1, 1.25, 1.5, 1.75, 2, 3, 4, 5, 6, 7]:
+        all_ppls = []
+        print('Calculating perplexities...')
+        for i in tqdm(range(len(dataset))):
+            datapoint = dataset[i]
+            tensors = {k: v.to(args.device) for k, v in datapoint.items()}
+            ppl_for_sequence = model.calculate_sequence_perplexity(**tensors, use_cache=True)
+            all_ppls.append(ppl_for_sequence.item())
 
-    all_ppls = []
-    print('Calculating perplexities...')
-    for i in tqdm(range(len(dataset))):
-        datapoint = dataset[i]
-        tensors = {k: v.to(args.device) for k, v in datapoint.items()}
-        ppl_for_sequence = model.calculate_sequence_perplexity(**tensors, use_cache=True)
-        all_ppls.append(ppl_for_sequence.item())
-
-    print(f'CFG: {args.cfg}, mean ppl: {torch.mean(all_ppls)}')
+        all_ppls = list(map(float, all_ppls))
+        print(
+            f'CFG: {args.cfg}, mean ppl: {sum(all_ppls) / len(all_ppls)}, prompt: {args.system_prompt}'
+        )
