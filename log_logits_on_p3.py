@@ -1,3 +1,4 @@
+import os.path
 import random
 import sys
 from transformers import (GPT2Tokenizer, AutoModelForCausalLM,
@@ -24,7 +25,7 @@ class CFGModelForCausalLM(nn.Module):
         self.round_to = round_to
 
     def arr_to_list(self, torch_arr):
-        l = torch_arr.cpu().detach().numpy()[0].tolist()
+        l = torch_arr.squeeze().cpu().detach().numpy().tolist()
         return list(map(lambda x: round(x, self.round_to), l))
 
     def forward(self,
@@ -145,6 +146,9 @@ if __name__ == '__main__':
         cfg=args.cfg,
         instruction_tuned_model=instruction_model,
     )
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
     print('loading dataset...')
     dataset = pd.read_csv(args.dataset)
     for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
