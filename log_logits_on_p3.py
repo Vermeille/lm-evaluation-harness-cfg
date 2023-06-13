@@ -24,7 +24,7 @@ class CFGModelForCausalLM(nn.Module):
         self.round_to = round_to
 
     def arr_to_list(self, torch_arr):
-        l = torch_arr.cpu().numpy()[0].tolist()
+        l = torch_arr.cpu().detach().numpy()[0].tolist()
         return list(map(lambda x: round(x, self.round_to), l))
 
     def forward(self,
@@ -133,10 +133,10 @@ if __name__ == '__main__':
         args.device_2 = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device)
+    base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device).eval()
     instruction_model = None
     if args.instruction_model is not None:
-        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device_2)
+        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device_2).eval()
 
     model = CFGModelForCausalLM(
         hf_causal_model=base_model,
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         output_model_name = args.model.replace('/', '-').lower()
         prompt_i = len(glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt'))
         output_file = f'{args.output_dir}/logit-files__{output_model_name}__{prompt_i}.txt'
-        
+
         if not args.dont_use_instruction:
             prompt = ("### Instruction: The prompt below is a question to answer, "
                       "a task to complete, or a conversation to respond to; decide "
