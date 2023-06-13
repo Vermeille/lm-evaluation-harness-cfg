@@ -159,7 +159,9 @@ if __name__ == '__main__':
         args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
     if args.instruction_model is not None:
-        args.instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model)
+        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model)
+    else:
+        instruction_model = None
 
     for p in args.custom_prompt:
         output_model_name = args.model.replace('/', '-').lower()
@@ -195,6 +197,6 @@ if __name__ == '__main__':
             min_length=l,
             repetition_penalty=1.2,
             logits_processor=LogitsProcessorList([
-                CFGLogits(1.5, inputs, model, logits_output_file=output_file, second_model=args.instruction_model)
+                CFGLogits(1.5, inputs, model, logits_output_file=output_file, second_model=instruction_model)
             ]),
         )
