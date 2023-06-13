@@ -8,6 +8,7 @@ from transformers import LogitsWarper, LogitsProcessorList
 from transformers.generation import LogitNormalization
 import torch.nn.functional as F
 import glob
+import json
 
 user_prompts = [
     'Why did the chicken cross the road?',
@@ -60,41 +61,56 @@ user_prompts = [
 
 class CFGLogits(LogitsWarper):
 
-    def __init__(self, cfg, inputs, model, logits_output_file=None):
+    def __init__(self, cfg, inputs, model, logits_output_file=None, second_model=None):
         self.cfg = cfg
         self.inputs = inputs
         self.model = model
-        self.out = None
+        self.second_model = second_model  # to optionally compare the logits we would have gotten with an
+                                          # instruction-tuned model
+        self.previous_output = None
+        self.previous_output_second = None
         self.logits_output_file = logits_output_file
 
-    def to_file(self, torch_arr, name):
-        with open(self.logits_output_file, 'a') as f:
-            x = torch_arr.cpu().numpy()[0]
-            x = ' '.join(list(map(str, x.tolist())))
-            f.write(f'{name}: {x}\n')
+    def arr_to_list(self, torch_arr):
+        return torch_arr.cpu().numpy()[0].tolist()
 
-    def __call__(self, input_ids, scores):
+    def run_model(self, input_ids, prompt_len, previous_output, model):
+        if previous_output is None:
+            # model p(x_i | x_{<i} ) by cutting out the prompt (except the last letter of it).
+            previous_output = model(input_ids[:, prompt_len - 1:])
+        else:
+            # model p(x_i | x_{<i} ) by taking the last generation, and then feeding in past_key_values.
+            previous_output = model(input_ids[:, -1:], past_key_values=previous_output.past_key_values)
+
+        return previous_output
+
+    def __call__(self, input_ids, prompted_logits):
         if self.cfg == 1:
-            return scores
+            return prompted_logits
+
         prompt_len = len(self.inputs["input_ids"][0])
-        scores = F.log_softmax(scores, dim=-1)
-        if self.cfg != 1:
-            if self.out is None:
-                # model p(x_i | x_{<i} ) by cutting out the prompt (except the last letter of it).
-                self.out = self.model(input_ids[:, prompt_len - 1:])
-            else:
-                # model p(x_i | x_{<i} ) by taking the last generation, and then feeding in past_key_values.
-                self.out = self.model(input_ids[:, -1:], past_key_values=self.out.past_key_values)
+        prompted_logits = F.log_softmax(prompted_logits, dim=-1)
+        self.previous_output = self.run_model(input_ids, prompt_len, self.previous_output, self.model)
 
-            # get the last layer of logits
-            unconditional_logits = F.log_softmax(self.out.logits[0][-1:], dim=-1)
-            scores = self.cfg * scores + (1 - self.cfg) * unconditional_logits
+        # get the last layer of logits
+        unconditional_logits = F.log_softmax(self.previous_output.logits[0][-1:], dim=-1)
+        cfg_logits = self.cfg * prompted_logits + (1 - self.cfg) * unconditional_logits
+        if self.second_model is not None:
+            self.previous_output_second = self.run_model(input_ids, prompt_len, self.previous_output_second, self.second_model)
+            instruction_logits = F.log_softmax(self.previous_output_second.logits[0][:prompt_len], dim=-1)
 
-            if self.logits_output_file is not None:
-                self.to_file(scores, 'prompted_logits')
-                self.to_file(unconditional_logits, 'unprompted_logits')
+        if self.logits_output_file is not None:
+            with open(self.logits_output_file, 'a') as f:
+                output_packet = {}
+                output_packet['cfg_logits'] = self.arr_to_list(cfg_logits)
+                output_packet['prompted_logits'] = self.arr_to_list(prompted_logits)
+                output_packet['unprompted_logits'] = self.arr_to_list(unconditional_logits)
+                if self.second_model is not None:
+                    output_packet['second_model_logits'] = self.arr_to_list(instruction_logits)
+                f.write(json.dumps(output_packet) + '\n')
 
-        return scores
+        return cfg_logits
+
 
 if __name__ == '__main__':
     import argparse
@@ -102,7 +118,11 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=float, default=1.5)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--model', type=str, default='nomic-ai/gpt4all-j')
-    parser.add_argument('--revision', type=str, default=None)  # "v1.3-groovy"
+    parser.add_argument(
+        '--instruction-model', type=str, default='nomic-ai/gpt4all-j',
+        help='Secondary model to run against during generation for comparison.'
+    )
+    parser.add_argument('--revision', type=str, default=None)
     parser.add_argument('--remove-bos', action='store_true', help='Test to see whether Llama needs BOS.')
     parser.add_argument('--dont-use-instruction', action='store_true')
     parser.add_argument('--system-prompt', type=str, default=None)
