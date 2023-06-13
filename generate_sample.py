@@ -150,16 +150,19 @@ if __name__ == '__main__':
     parser.add_argument('--dont-use-instruction', action='store_true')
     parser.add_argument('--system-prompt', type=str, default=None)
     parser.add_argument('--custom-prompt', nargs='+', default=['0'])
+    parser.add_argument('--device', type=str, default=None)
     args = parser.parse_args()
+    if args.device is not None:
+        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision)
+    model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device)
 
     if len(args.custom_prompt) == 1 and isinstance(args.custom_prompt[0], str) and not args.custom_prompt[0].isdigit():
         args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
     if args.instruction_model is not None:
-        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model)
+        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device)
     else:
         instruction_model = None
 
