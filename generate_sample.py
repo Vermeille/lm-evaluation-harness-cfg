@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
     for p in args.custom_prompt:
         output_model_name = args.model.replace('/', '-').lower()
-        user_prompt = p if not p.isdigit() else user_prompts[int(p)]
+        user_prompt = p if not (isinstance(p, int) or p.isdigit()) else user_prompts[int(p)]
         prompt_i = len(glob.glob(f'logit-files__{output_model_name}__*.txt'))
         output_file = f'logit-files__{output_model_name}__{prompt_i}.txt'
         if not args.dont_use_instruction:
