@@ -158,6 +158,9 @@ if __name__ == '__main__':
     if len(args.custom_prompt) == 1 and isinstance(args.custom_prompt[0], str) and not args.custom_prompt[0].isdigit():
         args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
+    if args.instruction_model is not None:
+        args.instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model)
+
     for p in args.custom_prompt:
         output_model_name = args.model.replace('/', '-').lower()
         user_prompt = p if not p.isdigit() else user_prompts[int(p)]
