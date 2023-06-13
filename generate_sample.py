@@ -159,7 +159,7 @@ if __name__ == '__main__':
         args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
     for p in args.custom_prompt:
-        output_model_name = args.model.replace('/', '-')
+        output_model_name = args.model.replace('/', '-').lower()
         user_prompt = p if not p.isdigit() else user_prompts[int(p)]
         prompt_i = len(glob.glob(f'logit-files__{output_model_name}__*.txt'))
         output_file = f'logit-files__{output_model_name}__{prompt_i}.txt'
@@ -175,7 +175,11 @@ if __name__ == '__main__':
         inputs = tokenizer([prompt], return_tensors="pt")
 
         with open(output_file, 'w') as f:
-            print(prompt, file=f)
+            f.write(json.dumps({
+                'prompt': prompt,
+                'model': args.model,
+                'instruction-model': args.instruction_model.replace('/', '-').lower(),
+            }) + '\n')
 
         # processing for Llama
         inputs.pop('token_type_ids', None)
@@ -187,5 +191,7 @@ if __name__ == '__main__':
             max_new_tokens=l,
             min_length=l,
             repetition_penalty=1.2,
-            logits_processor=LogitsProcessorList([CFGLogits(1.5, inputs, model, logits_output_file=output_file)]),
+            logits_processor=LogitsProcessorList([
+                CFGLogits(1.5, inputs, model, logits_output_file=output_file, second_model=args.instruction_model)
+            ]),
         )
