@@ -127,15 +127,22 @@ if __name__ == '__main__':
     parser.add_argument('--dont-use-instruction', action='store_true')
     parser.add_argument('--device', type=str, default=None)
     parser.add_argument('--device-2', type=str, default=None)
+    parser.add_argument('--max-prompt-len', type=int, default=100)
     args = parser.parse_args()
     if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if args.device_2 is None:
         args.device_2 = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+
     print('loading base model...')
-    base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device).eval()
+    if 't5' in args.model:
+        from transformers import T5Tokenizer, T5ForConditionalGeneration
+        tokenizer = T5Tokenizer.from_pretrained(args.model)
+        base_model = T5ForConditionalGeneration.from_pretrained(args.model).to(args.device).eval()
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device).eval()
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
@@ -183,4 +190,5 @@ if __name__ == '__main__':
 
 
 
-# python generate_sample.py --cfg 1.5 --instruction-model allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --custom-prompt 0-45
+# python log_logits_on_p3.py --cfg 1.5 --instruction-model  allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --dataset dataset_to_generate_on.csv --output-dir p3-output-dir/ --device cuda:2 --device-2 cuda:3
+# python log_logits_on_p3.py --cfg 1.5 --instruction-model bigscience/T0pp --model t5-11b --dont-use-instruction --dataset dataset_to_generate_on.csv --output-dir p3-output-dir/ --device cuda:4 --device-2 cuda:5
