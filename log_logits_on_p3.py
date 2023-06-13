@@ -111,6 +111,17 @@ class CFGModelForCausalLM(nn.Module):
         return None
 
 
+def load_model(model_name, revision, device):
+    if ('t5' in model_name) or ('t0' in model_name):
+        from transformers import T5Tokenizer, T5ForConditionalGeneration
+        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        base_model = T5ForConditionalGeneration.from_pretrained(model_name).to(device).eval()
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        base_model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(device).eval()
+    return tokenizer, base_model
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
@@ -136,17 +147,11 @@ if __name__ == '__main__':
 
 
     print('loading base model...')
-    if 't5' in args.model:
-        from transformers import T5Tokenizer, T5ForConditionalGeneration
-        tokenizer = T5Tokenizer.from_pretrained(args.model)
-        base_model = T5ForConditionalGeneration.from_pretrained(args.model).to(args.device).eval()
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(args.model)
-        base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device).eval()
+    base_model, tokenizer = load_model(args.model, args.revision, args.device)
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
-        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device_2).eval()
+        instruction_model, _ = load_model(args.instruction_model, args.revision, args.device_2)
 
     model = CFGModelForCausalLM(
         hf_causal_model=base_model,
