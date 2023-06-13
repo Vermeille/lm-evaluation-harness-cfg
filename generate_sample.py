@@ -119,6 +119,7 @@ class CFGLogits(LogitsWarper):
         unconditional_logits = F.log_softmax(self.previous_output.logits[0][-1:], dim=-1)
         cfg_logits = self.cfg * prompted_logits + (1 - self.cfg) * unconditional_logits
         if self.second_model is not None:
+            input_ids = input_ids.to(self.second_model.device)
             self.previous_output_second = self.run_model(input_ids, prompt_len, self.previous_output_second, self.second_model)
             instruction_logits = F.log_softmax(self.previous_output_second.logits[0][:prompt_len], dim=-1)
 
@@ -151,9 +152,12 @@ if __name__ == '__main__':
     parser.add_argument('--system-prompt', type=str, default=None)
     parser.add_argument('--custom-prompt', nargs='+', default=['0'])
     parser.add_argument('--device', type=str, default=None)
+    parser.add_argument('--device-2', type=str, default=None)
     args = parser.parse_args()
     if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    if args.device_2 is None:
+        args.device_2 = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device)
@@ -162,7 +166,7 @@ if __name__ == '__main__':
         args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
     if args.instruction_model is not None:
-        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device)
+        instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device_2)
     else:
         instruction_model = None
 
@@ -203,3 +207,6 @@ if __name__ == '__main__':
                 CFGLogits(1.5, inputs, model, logits_output_file=output_file, second_model=instruction_model)
             ]),
         )
+
+
+python generate_sample.py --cfg 1.5 --instruction-model allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --custom-prompt 0-45
