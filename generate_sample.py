@@ -181,6 +181,8 @@ if __name__ == '__main__':
 
         print(prompt_i, ':', prompt)
         inputs = tokenizer([prompt], return_tensors="pt")
+        inputs.pop('token_type_ids', None)
+        print('inputs', inputs)
 
         with open(output_file, 'w') as f:
             f.write(json.dumps({
@@ -190,10 +192,8 @@ if __name__ == '__main__':
             }) + '\n')
 
         # processing for Llama
-        inputs.pop('token_type_ids', None)
-        print('inputs', inputs)
         l = 128
-
+        inputs = {k: v.to(args.device) for k, v in inputs.items()}
         outputs = model.generate(
             **inputs,
             max_new_tokens=l,
