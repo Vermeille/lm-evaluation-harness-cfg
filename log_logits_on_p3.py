@@ -112,7 +112,7 @@ class CFGModelForCausalLM(nn.Module):
 
 
 def load_model(model_name, revision, device):
-    if ('t5' in model_name) or ('t0' in model_name):
+    if ('t5' in model_name) or ('T0' in model_name):
         from transformers import T5Tokenizer, T5ForConditionalGeneration
         tokenizer = T5Tokenizer.from_pretrained(model_name)
         base_model = T5ForConditionalGeneration.from_pretrained(model_name).to(device).eval()
