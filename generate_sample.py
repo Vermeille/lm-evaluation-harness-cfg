@@ -10,6 +10,29 @@ import torch.nn.functional as F
 import glob
 import json
 
+
+def parse_string_to_range(x):
+    """Given a range, return the list of integers in that range.
+
+    Examples:
+        >>> parse_string_to_range('1-3,5,7-9')
+            [1, 2, 3, 5, 7, 8, 9]
+    """
+    try:
+        result = []
+        for part in x.split(','):
+            if '-' in part:
+                a, b = part.split('-')
+                a, b = int(a), int(b)
+                result.extend(range(a, b + 1))
+            else:
+                a = int(part)
+                result.append(a)
+        return result
+    except:
+        return None
+
+
 user_prompts = [
     'Why did the chicken cross the road?',
     'What is the meaning of life?',
@@ -131,6 +154,9 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision)
+
+    if len(args.custom_prompt) == 1 and isinstance(args.custom_prompt[0], str) and not args.custom_prompt[0].isdigit():
+        args.custom_prompt = parse_string_to_range(args.custom_prompt[0])
 
     for p in args.custom_prompt:
         output_model_name = args.model.replace('/', '-')
