@@ -152,7 +152,7 @@ if __name__ == '__main__':
     parser.add_argument('--custom-prompt', nargs='+', default=['0'])
     parser.add_argument('--device', type=str, default=None)
     args = parser.parse_args()
-    if args.device is not None:
+    if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
