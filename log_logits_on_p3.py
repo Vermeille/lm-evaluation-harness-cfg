@@ -133,9 +133,11 @@ if __name__ == '__main__':
         args.device_2 = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
+    print('loading base model...')
     base_model = AutoModelForCausalLM.from_pretrained(args.model, revision=args.revision).to(args.device).eval()
     instruction_model = None
     if args.instruction_model is not None:
+        print('loading instruction model...')
         instruction_model = AutoModelForCausalLM.from_pretrained(args.instruction_model).to(args.device_2).eval()
 
     model = CFGModelForCausalLM(
@@ -143,8 +145,8 @@ if __name__ == '__main__':
         cfg=args.cfg,
         instruction_tuned_model=instruction_model,
     )
+    print('loading dataset...')
     dataset = pd.read_csv(args.dataset)
-
     for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
         output_model_name = args.model.replace('/', '-').lower()
         prompt_i = len(glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt'))
