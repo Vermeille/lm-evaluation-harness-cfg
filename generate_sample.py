@@ -209,4 +209,4 @@ if __name__ == '__main__':
         )
 
 
-python generate_sample.py --cfg 1.5 --instruction-model allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --custom-prompt 0-45
+# python generate_sample.py --cfg 1.5 --instruction-model allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --custom-prompt 0-45
