@@ -115,11 +115,11 @@ def load_model(model_name, revision, device):
     if ('t5' in model_name) or ('T0' in model_name):
         from transformers import T5Tokenizer, T5ForConditionalGeneration
         tokenizer = T5Tokenizer.from_pretrained(model_name)
-        base_model = T5ForConditionalGeneration.from_pretrained(model_name).to(device).eval()
+        model = T5ForConditionalGeneration.from_pretrained(model_name).to(device).eval()
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        base_model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(device).eval()
-    return tokenizer, base_model
+        model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(device).eval()
+    return tokenizer, model
 
 
 if __name__ == '__main__':
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
 
     print('loading base model...')
-    base_model, tokenizer = load_model(args.model, args.revision, args.device)
+    tokenizer, base_model  = load_model(args.model, args.revision, args.device)
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
