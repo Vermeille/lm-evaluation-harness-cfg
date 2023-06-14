@@ -40,12 +40,12 @@ class CFGModelForCausalLM(nn.Module):
         Left general so that
         """
         logits_long = self.hf_causal_model(
-            cfg_long_seq,
+            input_ids=cfg_long_seq,
             use_cache=use_cache,
             past_key_values=past_key_values_long
         )
         logits_short = self.hf_causal_model(
-            cfg_short_seq,
+            input_ids=cfg_short_seq,
             use_cache=use_cache,
             past_key_values=past_key_values_short
         )
@@ -55,7 +55,7 @@ class CFGModelForCausalLM(nn.Module):
                 cfg_long_seq = cfg_long_seq.to(self.instruction_tuned_model.device)
 
             logits_instruct = self.instruction_tuned_model(
-                cfg_long_seq,
+                input_ids=cfg_long_seq,
                 use_cache=use_cache,
                 past_key_values=past_key_values_instruction_tuned
             )
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
 
     print('loading base model...')
-    tokenizer, base_model  = load_model(args.model, args.revision, args.device)
+    tokenizer, base_model = load_model(args.model, args.revision, args.device)
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
