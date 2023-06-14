@@ -17,7 +17,7 @@ from torch import nn
 class CFGModelForCausalLM(nn.Module):
     """Stub of a Model Class that produces the likelihood of a prompt + continuation under a set CFG value."""
 
-    def __init__(self, hf_causal_model, model_family=None, instruction_tuned_model=None, cfg=None, round_to=4):
+    def __init__(self, hf_causal_model=None, model_family=None, instruction_tuned_model=None, cfg=None, round_to=4):
         super().__init__()
         self.hf_causal_model = hf_causal_model
         self.instruction_tuned_model = instruction_tuned_model
@@ -46,18 +46,26 @@ class CFGModelForCausalLM(nn.Module):
         """Generic `forward` method for calculating the logits of a sequence using CFG sequence.
         Left general so that
         """
-        logits_long = self.model_forward(
-            model=self.hf_causal_model,
-            input_ids=cfg_long_seq,
-            use_cache=use_cache,
-            past_key_values=past_key_values_long
-        )
-        logits_short = self.model_forward(
-            model=self.hf_causal_model,
-            input_ids=cfg_short_seq,
-            use_cache=use_cache,
-            past_key_values=past_key_values_short
-        )
+        logits_cfg = logits_long = logits_short = None
+        if self.hf_causal_model is not None:
+            logits_long = self.model_forward(
+                model=self.hf_causal_model,
+                input_ids=cfg_long_seq,
+                use_cache=use_cache,
+                past_key_values=past_key_values_long
+            )
+            logits_short = self.model_forward(
+                model=self.hf_causal_model,
+                input_ids=cfg_short_seq,
+                use_cache=use_cache,
+                past_key_values=past_key_values_short
+            )
+
+            l = F.log_softmax(logits_long[0][:, -1:], dim=-1)
+            s = F.log_softmax(logits_short[0][:, -1:], dim=-1)
+            logits_cfg = self.cfg * (l - s) + s
+
+        logits_instruct = None
         if self.instruction_tuned_model is not None:
             # swap devices if necessary
             if self.instruction_tuned_model.device != self.hf_causal_model.device:
@@ -69,12 +77,6 @@ class CFGModelForCausalLM(nn.Module):
                 use_cache=use_cache,
                 past_key_values=past_key_values_instruction_tuned
             )
-        else:
-            logits_instruct = None
-
-        l = F.log_softmax(logits_long[0][:, -1:], dim=-1)
-        s = F.log_softmax(logits_short[0][:, -1:], dim=-1)
-        logits_cfg = self.cfg * (l - s) + s
 
         return (
             logits_cfg, logits_long, logits_short, logits_instruct
@@ -100,9 +102,10 @@ class CFGModelForCausalLM(nn.Module):
             if output_file is not None:
                 with open(output_file, 'a') as f:
                     output_packet = {}
-                    output_packet['cfg_logits'] = self.arr_to_list(logits_cfg)
-                    output_packet['prompted_logits'] = self.arr_to_list(logits_long[0][:, -1:])
-                    output_packet['unprompted_logits'] = self.arr_to_list(logits_short[0][:, -1:])
+                    if self.hf_causal_model is not None:
+                        output_packet['cfg_logits'] = self.arr_to_list(logits_cfg)
+                        output_packet['prompted_logits'] = self.arr_to_list(logits_long[0][:, -1:])
+                        output_packet['unprompted_logits'] = self.arr_to_list(logits_short[0][:, -1:])
                     if self.instruction_tuned_model is not None:
                         output_packet['instruction_model_logits'] = self.arr_to_list(logits_instruct[0][:, -1:])
                     f.write(json.dumps(output_packet) + '\n')
@@ -110,8 +113,9 @@ class CFGModelForCausalLM(nn.Module):
             # update tokens
             if use_cache:
                 running_prompt_tokens = running_unprompted_tokens = continuation_ids[:, i:i+1]
-                prompted_kv_cache = logits_long.past_key_values
-                unprompted_kv_cache = logits_short.past_key_values
+                if logits_long is not None:
+                    prompted_kv_cache = logits_long.past_key_values
+                    unprompted_kv_cache = logits_short.past_key_values
                 if logits_instruct is not None:
                     instruct_kv_cache = logits_instruct.past_key_values
             else:
@@ -137,9 +141,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=float, default=1.5)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--model', type=str, default='nomic-ai/gpt4all-j')
+    parser.add_argument('--model', type=str, default=None)
     parser.add_argument(
-        '--instruction-model', type=str, default='nomic-ai/gpt4all-j',
+        '--instruction-model', type=str, default=None,
         help='Secondary model to run against during generation for comparison.'
     )
     parser.add_argument('--dataset', type=str)
@@ -155,13 +159,20 @@ if __name__ == '__main__':
     if args.device_2 is None:
         args.device_2 = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    if args.model is not None:
+        output_model_name = args.model.replace('/', '-').lower()
+    else:
+        output_model_name = args.instruction_model.replace('/', '-').lower()
 
     print('loading base model...')
-    tokenizer, base_model = load_model(args.model, args.revision, args.device)
+    base_model = None
+    if args.model is not None:
+        tokenizer, base_model = load_model(args.model, args.revision, args.device)
+
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
-        _, instruction_model = load_model(args.instruction_model, args.revision, args.device_2)
+        tokenizer, instruction_model = load_model(args.instruction_model, args.revision, args.device_2)
 
     model = CFGModelForCausalLM(
         hf_causal_model=base_model,
@@ -175,7 +186,6 @@ if __name__ == '__main__':
     print('loading dataset...')
     dataset = pd.read_csv(args.dataset)
     for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
-        output_model_name = args.model.replace('/', '-').lower()
         prompt_i = len(glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt'))
         output_file = f'{args.output_dir}/logit-files__{output_model_name}__{prompt_i}.txt'
 
