@@ -200,7 +200,7 @@ if __name__ == '__main__':
         cont_tokens = tokenizer([continuation], return_tensors="pt")
         print('inputs', prompt_tokens)
         with open(output_file, 'a') as f:
-            output_header = []
+            output_header = {}
             output_header['prompt'] = prompt
             if args.model is not None:
                 output_header['model'] = args.model.replace('/', '-').lower()
