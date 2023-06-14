@@ -17,16 +17,23 @@ from torch import nn
 class CFGModelForCausalLM(nn.Module):
     """Stub of a Model Class that produces the likelihood of a prompt + continuation under a set CFG value."""
 
-    def __init__(self, hf_causal_model, instruction_tuned_model=None, cfg=None, round_to=4):
+    def __init__(self, hf_causal_model, model_family=None, instruction_tuned_model=None, cfg=None, round_to=4):
         super().__init__()
         self.hf_causal_model = hf_causal_model
         self.instruction_tuned_model = instruction_tuned_model
         self.cfg = cfg
         self.round_to = round_to
+        self.model_family = model_family
 
     def arr_to_list(self, torch_arr):
         l = torch_arr.squeeze().cpu().detach().numpy().tolist()
         return list(map(lambda x: round(x, self.round_to), l))
+
+    def model_forward(self, input_ids, model, use_cache=False, past_key_values=None):
+        if self.model_family == 't5':
+            return model(input_ids=input_ids, decoder_input_ids=input_ids, use_cache=use_cache, past_key_values=past_key_values)
+        else:
+            return model(input_ids=input_ids, use_cache=use_cache, past_key_values=past_key_values)
 
     def forward(self,
                 cfg_long_seq,
@@ -39,12 +46,14 @@ class CFGModelForCausalLM(nn.Module):
         """Generic `forward` method for calculating the logits of a sequence using CFG sequence.
         Left general so that
         """
-        logits_long = self.hf_causal_model(
+        logits_long = self.model_forward(
+            model=self.hf_causal_model,
             input_ids=cfg_long_seq,
             use_cache=use_cache,
             past_key_values=past_key_values_long
         )
-        logits_short = self.hf_causal_model(
+        logits_short = self.model_forward(
+            model=self.hf_causal_model,
             input_ids=cfg_short_seq,
             use_cache=use_cache,
             past_key_values=past_key_values_short
@@ -54,7 +63,8 @@ class CFGModelForCausalLM(nn.Module):
             if self.instruction_tuned_model.device != self.hf_causal_model.device:
                 cfg_long_seq = cfg_long_seq.to(self.instruction_tuned_model.device)
 
-            logits_instruct = self.instruction_tuned_model(
+            logits_instruct = self.model_forward(
+                model=self.instruction_tuned_model,
                 input_ids=cfg_long_seq,
                 use_cache=use_cache,
                 past_key_values=past_key_values_instruction_tuned
@@ -157,6 +167,7 @@ if __name__ == '__main__':
         hf_causal_model=base_model,
         cfg=args.cfg,
         instruction_tuned_model=instruction_model,
+        model_family='t5' if 't5' in args.model else 'decoder',
     )
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
