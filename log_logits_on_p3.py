@@ -161,7 +161,7 @@ if __name__ == '__main__':
     instruction_model = None
     if args.instruction_model is not None:
         print('loading instruction model...')
-        instruction_model, _ = load_model(args.instruction_model, args.revision, args.device_2)
+        _, instruction_model = load_model(args.instruction_model, args.revision, args.device_2)
 
     model = CFGModelForCausalLM(
         hf_causal_model=base_model,
