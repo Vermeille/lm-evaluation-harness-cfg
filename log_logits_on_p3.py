@@ -200,11 +200,13 @@ if __name__ == '__main__':
         cont_tokens = tokenizer([continuation], return_tensors="pt")
         print('inputs', prompt_tokens)
         with open(output_file, 'a') as f:
-            f.write(json.dumps({
-                'prompt': prompt,
-                'model': args.model,
-                'instruction-model': args.instruction_model.replace('/', '-').lower(),
-            }) + '\n')
+            output_header = []
+            output_header['prompt'] = prompt
+            if args.model is not None:
+                output_header['model'] = args.model.replace('/', '-').lower()
+            if args.instruction_model is not None:
+                output_header['instruction-model'] = args.instruction_model.replace('/', '-').lower()
+            f.write(json.dumps(output_header) + '\n')
 
         model.gather_logits(
             prompt_ids=prompt_tokens['input_ids'].to(args.device),
