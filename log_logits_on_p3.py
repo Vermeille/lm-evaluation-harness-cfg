@@ -82,7 +82,9 @@ class CFGModelForCausalLM(nn.Module):
             logits_cfg, logits_long, logits_short, logits_instruct
         )
 
-    def gather_logits(self, prompt_ids, continuation_ids, use_cache=False, output_file=None, *args, **kwargs):
+    def gather_logits(self, prompt_ids, continuation_ids, use_cache=False, output_file=None,
+                      len_cutoff=None,
+                      *args, **kwargs):
         """Iterates returns the sequence-level perplexity of a `continuation` given a `prompt` using CFG.
         Important: Excludes the first token from the perplexity calculation.
         """
@@ -90,6 +92,9 @@ class CFGModelForCausalLM(nn.Module):
         running_prompt_tokens = prompt_ids
         running_unprompted_tokens = prompt_ids[:, -1:]
         for i, target_tok in enumerate(continuation_ids.squeeze()):
+            if i + len(prompt_ids) >= len_cutoff:
+                break
+
             logits_cfg, logits_long, logits_short, logits_instruct = self.forward(
                 running_prompt_tokens,
                 running_unprompted_tokens,
@@ -152,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--dont-use-instruction', action='store_true')
     parser.add_argument('--device', type=str, default=None)
     parser.add_argument('--device-2', type=str, default=None)
-    parser.add_argument('--max-prompt-len', type=int, default=100)
+    parser.add_argument('--max-cont-len', type=int, default=150)
     args = parser.parse_args()
     if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -212,6 +217,7 @@ if __name__ == '__main__':
             prompt_ids=prompt_tokens['input_ids'].to(args.device),
             continuation_ids=cont_tokens['input_ids'].to(args.device),
             use_cache=True,
+            len_cutoff=150,
             output_file=output_file,
         )
 
