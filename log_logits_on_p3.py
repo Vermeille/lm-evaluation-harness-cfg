@@ -203,6 +203,7 @@ if __name__ == '__main__':
         print(prompt_i, ':', prompt)
         prompt_tokens = tokenizer([prompt], return_tensors="pt")
         cont_tokens = tokenizer([continuation], return_tensors="pt")
+        cont_tokens['input_ids'] = cont_tokens['input_ids'][:, :args.max_cont_len]
         print('inputs', prompt_tokens)
         with open(output_file, 'a') as f:
             output_header = {}
@@ -217,7 +218,7 @@ if __name__ == '__main__':
             prompt_ids=prompt_tokens['input_ids'].to(args.device),
             continuation_ids=cont_tokens['input_ids'].to(args.device),
             use_cache=True,
-            len_cutoff=150,
+            len_cutoff=args.max_cont_len,
             output_file=output_file,
         )
 
