@@ -126,7 +126,7 @@ class CFGModelForCausalLM(nn.Module):
 
         # distribution-level differences
         if len(prob_1) != len(prob_2):
-            sel_toks = top_k_toks_1 if len(prob_1) > len(prob_2) else top_k_toks_2
+            sel_toks = top_k_toks_1 if len(prob_1) < len(prob_2) else top_k_toks_2
             prob_1, prob_2 = prob_1[sel_toks], prob_2[sel_toks]
 
         output[f'JSD(prob_{prob_1_name} || prob_{prob_2_name})'] = float(jensenshannon(prob_1, prob_2))
