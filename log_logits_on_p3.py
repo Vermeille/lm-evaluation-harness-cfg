@@ -5,13 +5,24 @@ from transformers import (GPT2Tokenizer, AutoModelForCausalLM,
                           GPTNeoXForCausalLM, AutoTokenizer)
 import numpy as np
 import torch
+from scipy.spatial.distance import jensenshannon
+from scipy.stats import entropy
 import pandas as pd
 from transformers import LogitsWarper, LogitsProcessorList
 from transformers.generation import LogitNormalization
+from scipy.spatial.distance import cosine
 import torch.nn.functional as F
 import glob
 import json
 from torch import nn
+
+
+def get_top_p_tokens(ps, p=.9):
+    sorted_probs, sorted_tokens = torch.topk(ps, k=len(ps))
+    cumprobs = torch.cumsum(sorted_probs, dim=0)
+    top_p = cumprobs[cumprobs < p].shape[0]
+    top_p = max(top_p, 1)
+    return sorted_tokens[:top_p].detach().numpy(), sorted_probs[:top_p].detach().numpy()
 
 
 class CFGModelForCausalLM(nn.Module):
@@ -24,8 +35,9 @@ class CFGModelForCausalLM(nn.Module):
         self.cfg = cfg
         self.round_to = round_to
         self.model_family = model_family
+        self.output_logits = False
 
-    def arr_to_list(self, torch_arr):
+    def tensor_to_list(self, torch_arr):
         l = torch_arr.squeeze().cpu().detach().numpy().tolist()
         return list(map(lambda x: round(x, self.round_to), l))
 
@@ -82,6 +94,48 @@ class CFGModelForCausalLM(nn.Module):
             logits_cfg, logits_long, logits_short, logits_instruct
         )
 
+    def get_single_metrics(self, tok, logits, prob_name, output, calcs):
+        prob = torch.softmax(logits[0][:, -1:].squeeze(), dim=0)
+        top_p_toks, top_p_probs = get_top_p_tokens(prob, p=.9)
+        token_ranks = torch.argsort(prob, descending=True).argsort().detach().numpy()
+
+        output[f'prob_{prob_name}(token)'] = float(prob[tok])
+        output[f'rank_{prob_name}(token)'] = int(token_ranks[tok])
+        calcs[f'top_k_toks_{prob_name}'] = torch.topk(prob, k=10).indices.detach().numpy()
+
+        prob = prob.detach().numpy()
+        output[f'entropy_{prob_name}'] = float(entropy(prob))
+        output[f'num_top_p_toks_{prob_name}'] = len(top_p_toks)
+        calcs[f'prob_{prob_name}'] = prob
+        calcs[f'token_ranks_{prob_name}'] = token_ranks
+        calcs[f'top_p_toks_{prob_name}'] = top_p_toks
+        return output, calcs
+
+    def get_comparison_metrics(self, tok, calcs, prob_1_name, prob_2_name, output):
+        prob_1, prob_2 = calcs[f'prob_{prob_1_name}'], calcs[f'prob_{prob_2_name}']
+        ranks_1, ranks_2 = calcs[f'token_ranks_{prob_1_name}'], calcs[f'token_ranks_{prob_2_name}']
+        top_p_toks_1, top_p_toks_2 = set(calcs[f'top_p_toks_{prob_1_name}']), set(calcs[f'top_p_toks_{prob_2_name}'])
+        top_k_toks_1, top_k_toks_2 = set(calcs[f'top_k_toks_{prob_1_name}']), set(calcs[f'top_k_toks_{prob_2_name}'])
+
+        # token-level differences
+        output[f'prob_{prob_1_name}(token) - prob_{prob_2_name}(token)'] = float(prob_1[tok] - prob_2[tok])
+        output[f'rank_{prob_1_name}(token) - rank_{prob_2_name}(token)'] = int(ranks_1[tok] - ranks_1[tok])
+        output[f'clamped_rank_{prob_1_name}(token) - rank_{prob_2_name}(token)'] = int(
+            min(ranks_1[tok], 50) - min(ranks_1[tok], 50)
+        )
+
+        # distribution-level differences
+        output[f'JSD(prob_{prob_1_name} || prob_{prob_2_name})'] = float(jensenshannon(prob_1, prob_2))
+        output[f'top p token overlap({prob_1_name} || {prob_2_name})'] = (
+                len(top_p_toks_1 & top_p_toks_2) / len(top_p_toks_1 | top_p_toks_2)
+        )
+        output[f'top k token overlap({prob_1_name} || {prob_2_name})'] = (
+                len(top_k_toks_1 & top_k_toks_2) / len(top_k_toks_1 | top_k_toks_2)
+        )
+        output[f'l2 distance(prob_{prob_1_name} || prob_{prob_2_name})'] = float(np.linalg.norm(prob_1 - prob_2))
+        output[f'cosine distance(prob_{prob_1_name} || prob_{prob_2_name})'] = float(cosine(prob_1, prob_2))
+        return output
+
     def gather_logits(self, prompt_ids, continuation_ids, use_cache=False, output_file=None,
                       len_cutoff=None,
                       *args, **kwargs):
@@ -106,13 +160,28 @@ class CFGModelForCausalLM(nn.Module):
 
             if output_file is not None:
                 with open(output_file, 'a') as f:
-                    output_packet = {}
+                    output_packet, calcs = {}, {}
+                    output_packet['token'] = int(target_tok)
+                    output_packet['continuation word idx'] = i
+                    output_packet['overall word idx'] = i + len(prompt_ids)
+                    output_packet['prompt length'] = len(prompt_ids)
+                    output_packet['continuation length'] = len(continuation_ids)
                     if self.hf_causal_model is not None:
-                        output_packet['cfg_logits'] = self.arr_to_list(logits_cfg)
-                        output_packet['prompted_logits'] = self.arr_to_list(logits_long[0][:, -1:])
-                        output_packet['unprompted_logits'] = self.arr_to_list(logits_short[0][:, -1:])
+                        self.get_single_metrics(target_tok, logits_long, 'prompted', output_packet, calcs)
+                        self.get_single_metrics(target_tok, logits_short, 'unprompted', output_packet, calcs)
+                        self.get_comparison_metrics(target_tok, calcs, 'prompted', 'unprompted', output_packet)
+                        if self.output_logits:
+                            output_packet['cfg_logits'] = self.tensor_to_list(logits_cfg)
+                            output_packet['prompted_logits'] = self.tensor_to_list(logits_long[0][:, -1:])
+                            output_packet['unprompted_logits'] = self.tensor_to_list(logits_short[0][:, -1:])
                     if self.instruction_tuned_model is not None:
-                        output_packet['instruction_model_logits'] = self.arr_to_list(logits_instruct[0][:, -1:])
+                        if self.output_logits:
+                            output_packet['instruction_model_logits'] = self.arr_to_list(logits_instruct[0][:, -1:])
+                    if (self.hf_causal_model is not None) and (self.instruction_tuned_model is not None):
+                        self.get_single_metrics(target_tok, logits_instruct, 'instruction_model', output_packet, calcs)
+                        self.get_comparison_metrics(target_tok, calcs, 'prompted', 'instruction_model', output_packet)
+                        self.get_comparison_metrics(target_tok, calcs, 'unprompted', 'instruction_model', output_packet)
+
                     f.write(json.dumps(output_packet) + '\n')
 
             # update tokens
