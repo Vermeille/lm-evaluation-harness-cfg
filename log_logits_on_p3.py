@@ -280,7 +280,7 @@ if __name__ == '__main__':
         print(prompt_i, ':', prompt)
         prompt_tokens = tokenizer([prompt], return_tensors="pt")
         cont_tokens = tokenizer([continuation], return_tensors="pt")
-        cont_tokens['input_ids'] = cont_tokens['input_ids'][:, :args.max_cont_len]
+        cont_tokens['input_ids'] = cont_tokens['input_ids'][:, :(args.max_cont_len - prompt_tokens['input_ids'].shape[-1])]
         print('inputs', prompt_tokens)
         with open(output_file, 'a') as f:
             output_header = {}
