@@ -185,7 +185,7 @@ class CFGModelForCausalLM(nn.Module):
                         if self.output_logits:
                             output_packet['instruction_model_logits'] = self.arr_to_list(logits_instruct[0][:, -1:])
                     if (self.hf_causal_model is not None) and (self.instruction_tuned_model is not None):
-                        self.get_single_metrics(target_tok, logits_instruct, 'instruction_model', output_packet, calcs)
+                        self.get_single_metrics(target_tok, logits_instruct[0][:, -1:], 'instruction_model', output_packet, calcs)
                         self.get_comparison_metrics(target_tok, calcs, 'prompted', 'instruction_model', output_packet)
                         self.get_comparison_metrics(target_tok, calcs, 'unprompted', 'instruction_model', output_packet)
                         self.get_comparison_metrics(target_tok, calcs, 'cfg', 'instruction_model', output_packet)
