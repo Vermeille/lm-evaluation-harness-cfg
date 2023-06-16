@@ -153,6 +153,9 @@ class CFGModelForCausalLM(nn.Module):
             if i + len(prompt_ids.squeeze()) >= len_cutoff:
                 break
 
+            if running_prompt_tokens.shape[1] == 0:
+                continue
+
             logits_cfg, logits_long, logits_short, logits_instruct = self.forward(
                 running_prompt_tokens,
                 running_unprompted_tokens,
