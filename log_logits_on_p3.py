@@ -22,7 +22,7 @@ def get_top_p_tokens(ps, p=.9):
     cumprobs = torch.cumsum(sorted_probs, dim=0)
     top_p = cumprobs[cumprobs < p].shape[0]
     top_p = max(top_p, 1)
-    return sorted_tokens[:top_p].detach().numpy(), sorted_probs[:top_p].detach().numpy()
+    return sorted_tokens[:top_p].cpu().detach().numpy(), sorted_probs[:top_p].cpu().detach().numpy()
 
 
 class CFGModelForCausalLM(nn.Module):
@@ -38,7 +38,7 @@ class CFGModelForCausalLM(nn.Module):
         self.output_logits = False
 
     def tensor_to_list(self, torch_arr):
-        l = torch_arr.squeeze().cpu().detach().numpy().tolist()
+        l = torch_arr.squeeze().cpu().cpu().detach().numpy().tolist()
         return list(map(lambda x: round(x, self.round_to), l))
 
     def model_forward(self, input_ids, model, use_cache=False, past_key_values=None):
@@ -97,13 +97,13 @@ class CFGModelForCausalLM(nn.Module):
     def get_single_metrics(self, tok, logits, prob_name, output, calcs):
         prob = torch.softmax(logits[0][:, -1:].squeeze(), dim=0)
         top_p_toks, top_p_probs = get_top_p_tokens(prob, p=.9)
-        token_ranks = torch.argsort(prob, descending=True).argsort().detach().numpy()
+        token_ranks = torch.argsort(prob, descending=True).argsort().cpu().detach().numpy()
 
         output[f'prob_{prob_name}(token)'] = float(prob[tok])
         output[f'rank_{prob_name}(token)'] = int(token_ranks[tok])
-        calcs[f'top_k_toks_{prob_name}'] = torch.topk(prob, k=10).indices.detach().numpy()
+        calcs[f'top_k_toks_{prob_name}'] = torch.topk(prob, k=10).indices.cpu().detach().numpy()
 
-        prob = prob.detach().numpy()
+        prob = prob.cpu().detach().numpy()
         output[f'entropy_{prob_name}'] = float(entropy(prob))
         output[f'num_top_p_toks_{prob_name}'] = len(top_p_toks)
         calcs[f'prob_{prob_name}'] = prob
