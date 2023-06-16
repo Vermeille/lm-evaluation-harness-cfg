@@ -101,7 +101,7 @@ class CFGModelForCausalLM(nn.Module):
 
         output[f'prob_{prob_name}(token)'] = float(prob[tok])
         output[f'rank_{prob_name}(token)'] = int(token_ranks[tok])
-        calcs[f'top_k_toks_{prob_name}'] = torch.topk(prob, k=10).indices.cpu().detach().numpy()
+        calcs[f'top_k_toks_{prob_name}'] = torch.topk(prob, k=10_000).indices.cpu().detach().numpy()
 
         prob = prob.cpu().detach().numpy()
         output[f'entropy_{prob_name}'] = float(entropy(prob))
@@ -115,7 +115,7 @@ class CFGModelForCausalLM(nn.Module):
         prob_1, prob_2 = calcs[f'prob_{prob_1_name}'], calcs[f'prob_{prob_2_name}']
         ranks_1, ranks_2 = calcs[f'token_ranks_{prob_1_name}'], calcs[f'token_ranks_{prob_2_name}']
         top_p_toks_1, top_p_toks_2 = set(calcs[f'top_p_toks_{prob_1_name}']), set(calcs[f'top_p_toks_{prob_2_name}'])
-        top_k_toks_1, top_k_toks_2 = set(calcs[f'top_k_toks_{prob_1_name}']), set(calcs[f'top_k_toks_{prob_2_name}'])
+        top_k_toks_1, top_k_toks_2 = calcs[f'top_k_toks_{prob_1_name}'], calcs[f'top_k_toks_{prob_2_name}']
 
         # token-level differences
         output[f'prob_{prob_1_name}(token) - prob_{prob_2_name}(token)'] = float(prob_1[tok] - prob_2[tok])
@@ -125,12 +125,15 @@ class CFGModelForCausalLM(nn.Module):
         )
 
         # distribution-level differences
+        if len(prob_1) != len(prob_2):
+            prob_1, prob_2 = prob_1[top_k_toks_1], prob_2[top_k_toks_1]
+
         output[f'JSD(prob_{prob_1_name} || prob_{prob_2_name})'] = float(jensenshannon(prob_1, prob_2))
         output[f'top p token overlap({prob_1_name} || {prob_2_name})'] = (
                 len(top_p_toks_1 & top_p_toks_2) / len(top_p_toks_1 | top_p_toks_2)
         )
         output[f'top k token overlap({prob_1_name} || {prob_2_name})'] = (
-                len(top_k_toks_1 & top_k_toks_2) / len(top_k_toks_1 | top_k_toks_2)
+                len(set(top_k_toks_1[:10]) & set(top_k_toks_2[:10])) / len(set(top_k_toks_1[:10]) | set(top_k_toks_2[:10]))
         )
         output[f'l2 distance(prob_{prob_1_name} || prob_{prob_2_name})'] = float(np.linalg.norm(prob_1 - prob_2))
         output[f'cosine distance(prob_{prob_1_name} || prob_{prob_2_name})'] = float(cosine(prob_1, prob_2))
@@ -205,8 +208,8 @@ def load_model(model_name, revision, device):
         tokenizer = T5Tokenizer.from_pretrained(model_name)
         model = T5ForConditionalGeneration.from_pretrained(model_name).to(device).eval()
     else:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision).to(device).eval()
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision, trust_remote_code=True).to(device).eval()
     return tokenizer, model
 
 
@@ -296,3 +299,8 @@ if __name__ == '__main__':
 
 # python log_logits_on_p3.py --cfg 1.5 --instruction-model  allenai/tulu-7b --model huggyllama/llama-7b --dont-use-instruction --dataset dataset_to_generate_on.csv --output-dir p3-output-dir/ --device cuda:2 --device-2 cuda:3
 # python log_logits_on_p3.py --cfg 1.5 --instruction-model bigscience/T0pp --model t5-11b --dont-use-instruction --dataset dataset_to_generate_on.csv --output-dir p3-output-dir/ --device cuda:4 --device-2 cuda:5
+
+
+# python log_logits_on_p3.py --cfg 1.1 --instruction-model tiiuae/falcon-7b-instruct --model tiiuae/falcon-7b --dont-use-instruction --dataset qa_big_dataset_to_generate_on.csv --output-dir p3-qa-metrics-output-dir-1.1-cfg/ --device cuda:4 --device-2 cuda:5
+
+# python log_logits_on_p3.py --cfg 1.1 --instruction-model lambdalabs/pythia-6.9b-deduped-synthetic-instruct --model EleutherAI/pythia-6.9b-deduped --dont-use-instruction --dataset qa_big_dataset_to_generate_on.csv --output-dir p3-qa-metrics-output-dir-1.1-cfg/ --device cuda:6 --device-2 cuda:7
