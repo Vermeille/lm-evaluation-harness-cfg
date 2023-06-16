@@ -119,9 +119,9 @@ class CFGModelForCausalLM(nn.Module):
 
         # token-level differences
         output[f'prob_{prob_1_name}(token) - prob_{prob_2_name}(token)'] = float(prob_1[tok] - prob_2[tok])
-        output[f'rank_{prob_1_name}(token) - rank_{prob_2_name}(token)'] = int(ranks_1[tok] - ranks_1[tok])
+        output[f'rank_{prob_1_name}(token) - rank_{prob_2_name}(token)'] = int(ranks_1[tok] - ranks_2[tok])
         output[f'clamped_rank_{prob_1_name}(token) - rank_{prob_2_name}(token)'] = int(
-            min(ranks_1[tok], 50) - min(ranks_1[tok], 50)
+            min(ranks_1[tok], 50) - min(ranks_2[tok], 50)
         )
 
         # distribution-level differences
