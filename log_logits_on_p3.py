@@ -149,7 +149,7 @@ class CFGModelForCausalLM(nn.Module):
         running_prompt_tokens = prompt_ids
         running_unprompted_tokens = prompt_ids[:, -1:]
         for i, target_tok in enumerate(continuation_ids.squeeze()):
-            if i + len(prompt_ids) >= len_cutoff:
+            if i + len(prompt_ids.squeeze()) >= len_cutoff:
                 break
 
             logits_cfg, logits_long, logits_short, logits_instruct = self.forward(
@@ -166,9 +166,9 @@ class CFGModelForCausalLM(nn.Module):
                     output_packet, calcs = {}, {}
                     output_packet['token'] = int(target_tok)
                     output_packet['continuation word idx'] = i
-                    output_packet['overall word idx'] = i + len(prompt_ids)
-                    output_packet['prompt length'] = len(prompt_ids)
-                    output_packet['continuation length'] = len(continuation_ids)
+                    output_packet['overall word idx'] = i + len(prompt_ids.squeeze())
+                    output_packet['prompt length'] = len(prompt_ids.squeeze())
+                    output_packet['continuation length'] = len(continuation_ids.squeeze())
                     if self.hf_causal_model is not None:
                         self.get_single_metrics(target_tok, logits_long, 'prompted', output_packet, calcs)
                         self.get_single_metrics(target_tok, logits_short, 'unprompted', output_packet, calcs)
@@ -303,4 +303,4 @@ if __name__ == '__main__':
 
 # python log_logits_on_p3.py --cfg 1.1 --instruction-model tiiuae/falcon-7b-instruct --model tiiuae/falcon-7b --dont-use-instruction --dataset qa_big_dataset_to_generate_on.csv --output-dir p3-qa-metrics-output-dir-1.1-cfg/ --device cuda:4 --device-2 cuda:5
 
-# python log_logits_on_p3.py --cfg 1.1 --instruction-model lambdalabs/pythia-6.9b-deduped-synthetic-instruct --model EleutherAI/pythia-6.9b-deduped --dont-use-instruction --dataset qa_big_dataset_to_generate_on.csv --output-dir p3-qa-metrics-output-dir-1.1-cfg/ --device cuda:6 --device-2 cuda:7
+# python log_logits_on_p3.py --cfg 1.1 --instruction-model databricks/dolly-v2-12b --model EleutherAI/pythia-12b --dont-use-instruction --dataset qa_big_dataset_to_generate_on.csv --output-dir p3-qa-metrics-output-dir-1.1-cfg/ --device cuda:6 --device-2 cuda:7
