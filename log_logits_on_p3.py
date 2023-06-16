@@ -172,7 +172,10 @@ class CFGModelForCausalLM(nn.Module):
                     if self.hf_causal_model is not None:
                         self.get_single_metrics(target_tok, logits_long, 'prompted', output_packet, calcs)
                         self.get_single_metrics(target_tok, logits_short, 'unprompted', output_packet, calcs)
+                        self.get_single_metrics(target_tok, logits_cfg, 'cfg', output_packet, calcs)
                         self.get_comparison_metrics(target_tok, calcs, 'prompted', 'unprompted', output_packet)
+                        self.get_comparison_metrics(target_tok, calcs, 'cfg', 'prompted', output_packet)
+                        self.get_comparison_metrics(target_tok, calcs, 'cfg', 'unprompted', output_packet)
                         if self.output_logits:
                             output_packet['cfg_logits'] = self.tensor_to_list(logits_cfg)
                             output_packet['prompted_logits'] = self.tensor_to_list(logits_long[0][:, -1:])
@@ -184,6 +187,7 @@ class CFGModelForCausalLM(nn.Module):
                         self.get_single_metrics(target_tok, logits_instruct, 'instruction_model', output_packet, calcs)
                         self.get_comparison_metrics(target_tok, calcs, 'prompted', 'instruction_model', output_packet)
                         self.get_comparison_metrics(target_tok, calcs, 'unprompted', 'instruction_model', output_packet)
+                        self.get_comparison_metrics(target_tok, calcs, 'cfg', 'instruction_model', output_packet)
 
                     f.write(json.dumps(output_packet) + '\n')
 
