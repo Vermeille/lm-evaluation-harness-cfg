@@ -95,7 +95,7 @@ class CFGModelForCausalLM(nn.Module):
         )
 
     def get_single_metrics(self, tok, logits, prob_name, output, calcs):
-        prob = torch.softmax(logits[0][:, -1:].squeeze(), dim=0)
+        prob = torch.softmax(logits.squeeze(), dim=0)
         top_p_toks, top_p_probs = get_top_p_tokens(prob, p=.9)
         token_ranks = torch.argsort(prob, descending=True).argsort().cpu().detach().numpy()
 
@@ -171,8 +171,8 @@ class CFGModelForCausalLM(nn.Module):
                     output_packet['prompt length'] = len(prompt_ids.squeeze())
                     output_packet['continuation length'] = len(continuation_ids.squeeze())
                     if self.hf_causal_model is not None:
-                        self.get_single_metrics(target_tok, logits_long, 'prompted', output_packet, calcs)
-                        self.get_single_metrics(target_tok, logits_short, 'unprompted', output_packet, calcs)
+                        self.get_single_metrics(target_tok, logits_long[0][:, -1:], 'prompted', output_packet, calcs)
+                        self.get_single_metrics(target_tok, logits_short[0][:, -1:], 'unprompted', output_packet, calcs)
                         self.get_single_metrics(target_tok, logits_cfg, 'cfg', output_packet, calcs)
                         self.get_comparison_metrics(target_tok, calcs, 'prompted', 'unprompted', output_packet)
                         self.get_comparison_metrics(target_tok, calcs, 'cfg', 'prompted', output_packet)
