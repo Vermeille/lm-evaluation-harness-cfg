@@ -268,9 +268,20 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
+    existing_files = glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt')
+    existing_prompts = []
+    if len(existing_files) > 0:
+        for f in existing_files:
+            lines = open(f).readlines()
+            prompt = json.loads(lines[0])['prompt']
+            existing_prompts.append(prompt)
+
     print('loading dataset...')
     dataset = pd.read_csv(args.dataset)
     for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
+        if prompt in existing_prompts:
+            continue
+
         prompt_i = len(glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt'))
         output_file = f'{args.output_dir}/logit-files__{output_model_name}__{prompt_i}.txt'
 
