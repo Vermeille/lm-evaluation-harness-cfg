@@ -152,8 +152,8 @@ class CFGModelForCausalLM(nn.Module):
         unprompted_kv_cache, prompted_kv_cache, instruct_kv_cache = None, None, None
         running_prompt_tokens = prompt_ids
         running_unprompted_tokens = prompt_ids[:, -1:]
-        for i, target_tok in enumerate(continuation_ids.squeeze()):
-            if i + len(prompt_ids.squeeze()) >= len_cutoff:
+        for i, target_tok in enumerate(continuation_ids[0]):
+            if i + len(prompt_ids[0]) >= len_cutoff:
                 break
 
             if running_prompt_tokens.shape[1] == 0:
@@ -173,9 +173,9 @@ class CFGModelForCausalLM(nn.Module):
                     output_packet, calcs = {}, {}
                     output_packet['token'] = int(target_tok)
                     output_packet['continuation word idx'] = i
-                    output_packet['overall word idx'] = i + len(prompt_ids.squeeze())
-                    output_packet['prompt length'] = len(prompt_ids.squeeze())
-                    output_packet['continuation length'] = len(continuation_ids.squeeze())
+                    output_packet['overall word idx'] = i + len(prompt_ids[0])
+                    output_packet['prompt length'] = len(prompt_ids[0])
+                    output_packet['continuation length'] = len(continuation_ids[0])
                     if self.hf_causal_model is not None:
                         self.get_single_metrics(target_tok, logits_long[0][:, -1:], 'prompted', output_packet, calcs)
                         self.get_single_metrics(target_tok, logits_short[0][:, -1:], 'unprompted', output_packet, calcs)
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         os.makedirs(f'{args.output_dir}/{output_model_name}')
 
     print('loading dataset...')
-    dataset = pd.read_csv(args.dataset)
+    dataset = pd.read_csv(args.dataset, index_col=0).iloc[[28661]]
     existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
     existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
