@@ -221,7 +221,7 @@ def load_model(model_name, revision, device):
     return tokenizer, model
 
 from tqdm.auto import tqdm
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 def load_dataset_from_p3(dataset_name):
     if dataset_name.endswith('.csv'):
         return pd.read_csv(dataset_name)
@@ -235,6 +235,8 @@ def load_dataset_from_p3(dataset_name):
             all_datasets = []
             print('loading datasets from bigscience/P3...')
             for c in tqdm(availabe_configs):
+                if ('resample' not in dataset_name) and os.path.exists('p3-dump.csv'):
+                    break
                 d = load_dataset('bigscience/P3', c)
                 for split in ['test', 'validation']:
                     if split in d:
