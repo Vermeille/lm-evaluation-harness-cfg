@@ -242,6 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default=None)
     parser.add_argument('--device-2', type=str, default=None)
     parser.add_argument('--max-cont-len', type=int, default=150)
+    parser.add_argument('--max-overall-len', type=int, default=275)
     args = parser.parse_args()
     if args.device is None:
         args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -313,7 +314,7 @@ if __name__ == '__main__':
             prompt_ids=prompt_tokens['input_ids'].to(args.device),
             continuation_ids=cont_tokens['input_ids'].to(args.device),
             use_cache=True,
-            len_cutoff=args.max_cont_len,
+            len_cutoff=args.max_overall_len,
             output_file=output_file,
         )
 
