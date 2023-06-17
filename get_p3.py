@@ -9,6 +9,9 @@ MAX_LEN = 200
 NUM_SAMPLES_PER_DATASET = 50
 all_datasets = []
 output_dir = 'p3-sampled-cache'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 np.random.shuffle(availabe_configs)
 for c in tqdm(availabe_configs):
     if os.path.exists(os.path.join(output_dir, f'{c}-cache.csv')):
@@ -24,11 +27,13 @@ for c in tqdm(availabe_configs):
                 .filter(lambda x: (x['is_correct'] == True) if 'is_correct' in x else True)
             )
             if len(acceptable_test_dataset) > 0:
-                both_splits.append(acceptable_test_dataset['dataset'])
+                both_splits.append(acceptable_test_dataset)
 
     if len(both_splits) > 0:
         dataset = concatenate_datasets(both_splits)
         dataset_df = pd.DataFrame(dataset).pipe(lambda df: df.sample(min(NUM_SAMPLES_PER_DATASET, len(df))))
         dataset_df['dataset_name'] = c
         dataset_df.to_csv(os.path.join(output_dir, f'{c}-cache.csv'))
-        
+    else :
+        with open(os.path.join(output_dir, f'{c}-cache.csv'), 'w') as f:
+            f.write('')
