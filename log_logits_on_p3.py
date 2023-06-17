@@ -49,17 +49,16 @@ class CFGModelForCausalLM(nn.Module):
         else:
             return model(input_ids=input_ids, use_cache=use_cache, past_key_values=past_key_values)
 
-    def forward(self,
-                cfg_long_seq,
-                cfg_short_seq,
-                use_cache=False,
-                past_key_values_long=None,
-                past_key_values_short=None,
-                past_key_values_instruction_tuned=None,
+    def forward(
+            self,
+            cfg_long_seq,
+            cfg_short_seq,
+            use_cache=False,
+            past_key_values_long=None,
+            past_key_values_short=None,
+            past_key_values_instruction_tuned=None,
     ):
-        """Generic `forward` method for calculating the logits of a sequence using CFG sequence.
-        Left general so that
-        """
+        """Generic `forward` method for calculating the logits of a sequence using CFG sequence."""
         logits_cfg = logits_long = logits_short = None
         if self.hf_causal_model is not None:
             logits_long = self.model_forward(
@@ -142,9 +141,11 @@ class CFGModelForCausalLM(nn.Module):
         output[f'cosine distance(prob_{prob_1_name} || prob_{prob_2_name})'] = float(cosine(prob_1, prob_2))
         return output
 
-    def gather_logits(self, prompt_ids, continuation_ids, use_cache=False, output_file=None,
-                      len_cutoff=None,
-                      *args, **kwargs):
+    def gather_logits(
+            self, prompt_ids, continuation_ids, use_cache=False, output_file=None,
+            len_cutoff=None,
+            *args, **kwargs
+    ):
         """Iterates returns the sequence-level perplexity of a `continuation` given a `prompt` using CFG.
         Important: Excludes the first token from the perplexity calculation.
         """
@@ -199,7 +200,8 @@ class CFGModelForCausalLM(nn.Module):
 
             # update tokens
             if use_cache:
-                running_prompt_tokens = running_unprompted_tokens = continuation_ids[:, i:i+1]
+                running_prompt_tokens = continuation_ids[:, i:i+1]
+                running_unprompted_tokens = continuation_ids[:, i:i+1]
                 if logits_long is not None:
                     prompted_kv_cache = logits_long.past_key_values
                     unprompted_kv_cache = logits_short.past_key_values
@@ -273,7 +275,7 @@ if __name__ == '__main__':
     print('loading dataset...')
     dataset = pd.read_csv(args.dataset)
     existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
-    existing_ids = set(map(lambda x: int(re.search('logit-files__(\d+).txt', x).group(1)), existing_files))
+    existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
     for idx, (dataset, prompt, continuation) in tqdm(
             dataset[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']].sample(frac=1).iterrows(),
