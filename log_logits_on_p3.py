@@ -286,8 +286,8 @@ if __name__ == '__main__':
 
         # if there's another process that yielded more ids
         existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
-        if len(existing_files) != existing_ids:
-            existing_ids = set(map(lambda x: int(re.search('logit-files__(\d+).txt', x).group(1)), existing_files))
+        if len(existing_files) != len(existing_ids):
+            existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
         output_file = f'{args.output_dir}/{output_model_name}/logit-files__{dataset}__{idx}.txt'
 
