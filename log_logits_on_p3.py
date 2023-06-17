@@ -14,7 +14,9 @@ from scipy.spatial.distance import cosine
 import torch.nn.functional as F
 import glob
 import json
+import re
 from torch import nn
+from tqdm.auto import tqdm
 
 
 def get_top_p_tokens(ps, p=.9):
@@ -220,58 +222,6 @@ def load_model(model_name, revision, device):
         model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision, trust_remote_code=True).to(device).eval()
     return tokenizer, model
 
-from tqdm.auto import tqdm
-from datasets import load_dataset, concatenate_datasets
-def load_dataset_from_p3(dataset_name):
-    if dataset_name.endswith('.csv'):
-        return pd.read_csv(dataset_name)
-    else:
-        if ('resample' not in dataset_name) and os.path.exists('p3-dump.csv'):
-            return pd.read_csv('p3-dump.csv')
-        else:
-            availabe_configs = pd.read_csv('p3-configs.csv', index_col=0)['config']
-            MAX_LEN = 200
-            NUM_SAMPLES_PER_DATASET = 50
-            all_datasets = []
-            print('loading datasets from bigscience/P3...')
-            for c in tqdm(availabe_configs):
-                if ('resample' not in dataset_name) and os.path.exists('p3-dump.csv'):
-                    break
-                d = load_dataset('bigscience/P3', c)
-                for split in ['test', 'validation']:
-                    if split in d:
-                        acceptable_test_dataset = (
-                            d[split]
-                            .filter(lambda x: len(x['inputs']) < MAX_LEN)
-                        )
-                        all_datasets.append({
-                            'dataset_name': c,
-                            'split': split,
-                            'dataset': acceptable_test_dataset
-                        })
-
-            print('sampling...')
-            suitable_datasets_df = (
-                pd.DataFrame(all_datasets)
-                .loc[lambda df: df['dataset'].str.len() > 0]
-                .assign(sampled_dataset=lambda df: df['dataset']
-                    .apply(lambda x: x.filter(lambda x: (x['is_correct'] == True) if 'is_correct' in x else True))
-                    .progress_apply(lambda x: np.random.choice(x, min(NUM_SAMPLES_PER_DATASET, len(x)), replace=False))
-                )
-            )
-
-            print('returning...')
-            dataset_to_generate_on = []
-            for _, (d, samples) in suitable_datasets_df[['dataset_name', 'sampled_dataset']].iterrows():
-                sample_df = pd.DataFrame(samples.tolist())
-                sample_df['dataset_name'] = d
-                dataset_to_generate_on.append(sample_df)
-            dataset_to_generate_on_df = pd.concat(dataset_to_generate_on)
-
-            to_return = (dataset_to_generate_on_df[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']])
-            to_return.to_csv('p3-dump.csv')
-            return to_return
-
 
 if __name__ == '__main__':
     import argparse
@@ -317,25 +267,27 @@ if __name__ == '__main__':
         instruction_tuned_model=instruction_model,
         model_family='t5' if 't5' in args.model else 'decoder',
     )
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-
-    existing_files = glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt')
-    existing_prompts = []
-    if len(existing_files) > 0:
-        for f in existing_files:
-            lines = open(f).readlines()
-            prompt = json.loads(lines[0])['prompt']
-            existing_prompts.append(prompt)
+    if not os.path.exists(f'{args.output_dir}/{output_model_name}'):
+        os.makedirs(f'{args.output_dir}/{output_model_name}')
 
     print('loading dataset...')
-    dataset = load_dataset_from_p3(args.dataset)
-    for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
-        if prompt in existing_prompts:
+    dataset = pd.read_csv(args.dataset)
+    existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
+    existing_ids = set(map(lambda x: int(re.search('logit-files__(\d+).txt', x).group(1)), existing_files))
+
+    for idx, (dataset, prompt, continuation) in tqdm(
+            dataset[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']].sample(frac=1).iterrows(),
+            total=len(dataset)
+    ):
+        if idx in existing_ids:
             continue
 
-        prompt_i = len(glob.glob(f'{args.output_dir}/logit-files__{output_model_name}__*.txt'))
-        output_file = f'{args.output_dir}/logit-files__{output_model_name}__{prompt_i}.txt'
+        # if there's another process that yielded more ids
+        existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
+        if len(existing_files) != existing_ids:
+            existing_ids = set(map(lambda x: int(re.search('logit-files__(\d+).txt', x).group(1)), existing_files))
+
+        output_file = f'{args.output_dir}/{output_model_name}/logit-files__{dataset}__{idx}.txt'
 
         if not args.dont_use_instruction:
             prompt = ("### Instruction: The prompt below is a question to answer, "
@@ -343,11 +295,9 @@ if __name__ == '__main__':
                       "which and write an appropriate response.\n"
                       f"### Prompt: {prompt}\n### Response:")
 
-        print(prompt_i, ':', prompt)
         prompt_tokens = tokenizer([prompt], return_tensors="pt")
         cont_tokens = tokenizer([continuation], return_tensors="pt")
         cont_tokens['input_ids'] = cont_tokens['input_ids'][:, :(args.max_cont_len - prompt_tokens['input_ids'].shape[-1])]
-        print('inputs', prompt_tokens)
         with open(output_file, 'a') as f:
             output_header = {}
             output_header['prompt'] = prompt
