@@ -274,7 +274,7 @@ if __name__ == '__main__':
         os.makedirs(f'{args.output_dir}/{output_model_name}')
 
     print('loading dataset...')
-    dataset = pd.read_csv(args.dataset, index_col=0).iloc[[28661]]
+    dataset = pd.read_csv(args.dataset, index_col=0)
     existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
     existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
