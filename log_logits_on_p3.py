@@ -253,6 +253,7 @@ def load_dataset_from_p3(dataset_name):
                 pd.DataFrame(all_datasets)
                 .loc[lambda df: df['dataset'].str.len() > 0]
                 .assign(sampled_dataset=lambda df: df['dataset']
+                    .apply(lambda x: x.filter(lambda x: (x['is_correct'] == True) if 'is_correct' in x else True))
                     .progress_apply(lambda x: np.random.choice(x, min(NUM_SAMPLES_PER_DATASET, len(x)), replace=False))
                 )
             )
@@ -265,10 +266,7 @@ def load_dataset_from_p3(dataset_name):
                 dataset_to_generate_on.append(sample_df)
             dataset_to_generate_on_df = pd.concat(dataset_to_generate_on)
 
-            to_return = (dataset_to_generate_on_df
-                .loc[lambda df: df['is_correct'].fillna(True) == True]
-                [['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']]
-            )
+            to_return = (dataset_to_generate_on_df[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']])
             to_return.to_csv('p3-dump.csv')
             return to_return
 
