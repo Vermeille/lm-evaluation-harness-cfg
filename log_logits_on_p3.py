@@ -220,6 +220,58 @@ def load_model(model_name, revision, device):
         model = AutoModelForCausalLM.from_pretrained(model_name, revision=revision, trust_remote_code=True).to(device).eval()
     return tokenizer, model
 
+from tqdm.auto import tqdm
+from datasets import load_dataset
+def load_dataset_from_p3(dataset_name):
+    if dataset_name.endswith('.csv'):
+        return pd.read_csv(dataset_name)
+    else:
+        if ('resample' not in dataset_name) and os.path.exists('p3-dump.csv'):
+            return pd.read_csv('p3-dump.csv')
+        else:
+            availabe_configs = pd.read_csv('p3-configs.csv', index_col=0)['config']
+            MAX_LEN = 200
+            NUM_SAMPLES_PER_DATASET = 50
+            all_datasets = []
+            print('loading datasets from bigscience/P3...')
+            for c in tqdm(availabe_configs):
+                d = load_dataset('bigscience/P3', c)
+                for split in ['test', 'validation']:
+                    if split in d:
+                        acceptable_test_dataset = (
+                            d[split]
+                            .filter(lambda x: len(x['inputs']) < MAX_LEN)
+                        )
+                        all_datasets.append({
+                            'dataset_name': c,
+                            'split': split,
+                            'dataset': acceptable_test_dataset
+                        })
+
+            print('sampling...')
+            suitable_datasets_df = (
+                pd.DataFrame(all_datasets)
+                .loc[lambda df: df['dataset'].str.len() > 0]
+                .assign(sampled_dataset=lambda df: df['dataset']
+                    .progress_apply(lambda x: np.random.choice(x, min(NUM_SAMPLES_PER_DATASET, len(x)), replace=False))
+                )
+            )
+
+            print('returning...')
+            dataset_to_generate_on = []
+            for _, (d, samples) in suitable_datasets_df[['dataset_name', 'sampled_dataset']].iterrows():
+                sample_df = pd.DataFrame(samples.tolist())
+                sample_df['dataset_name'] = d
+                dataset_to_generate_on.append(sample_df)
+            dataset_to_generate_on_df = pd.concat(dataset_to_generate_on)
+
+            to_return = (dataset_to_generate_on_df
+                .loc[lambda df: df['is_correct'].fillna(True) == True]
+                [['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']]
+            )
+            to_return.to_csv('p3-dump.csv')
+            return to_return
+
 
 if __name__ == '__main__':
     import argparse
@@ -277,7 +329,7 @@ if __name__ == '__main__':
             existing_prompts.append(prompt)
 
     print('loading dataset...')
-    dataset = pd.read_csv(args.dataset)
+    dataset = load_dataset_from_p3(args.dataset)
     for prompt, continuation in dataset[['inputs_pretokenized', 'targets_pretokenized']].values:
         if prompt in existing_prompts:
             continue
