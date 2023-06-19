@@ -278,12 +278,16 @@ if __name__ == '__main__':
     existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
     existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
+    to_remove = "You're an open sourced alternative to ChatGPT. The following is a question, a task, or a conversation; write a response:"
     for idx, (dataset, prompt, continuation) in tqdm(
             dataset[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']].sample(frac=1).iterrows(),
             total=len(dataset)
     ):
         if idx in existing_ids:
             continue
+
+        if to_remove in prompt:
+            prompt = prompt.replace(to_remove, '')
 
         # if there's another process that yielded more ids
         existing_files = glob.glob(f'{args.output_dir}/{output_model_name}/logit-files__*.txt')
