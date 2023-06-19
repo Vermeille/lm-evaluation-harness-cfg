@@ -279,6 +279,9 @@ if __name__ == '__main__':
     existing_ids = set(map(lambda x: int(re.search('logit-files__.*__(\d+).txt', x).group(1)), existing_files))
 
     to_remove = "You're an open sourced alternative to ChatGPT. The following is a question, a task, or a conversation; write a response:"
+    if 'dataset_name' not in dataset.columns:
+        dataset['dataset_name'] = ''
+        
     for idx, (dataset, prompt, continuation) in tqdm(
             dataset[['dataset_name', 'inputs_pretokenized', 'targets_pretokenized']].sample(frac=1).iterrows(),
             total=len(dataset)
