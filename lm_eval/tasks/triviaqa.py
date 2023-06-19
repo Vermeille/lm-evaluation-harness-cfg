@@ -89,7 +89,9 @@ class TriviaQA(Task):
     def process_results(self, doc, results):
         continuation = results[0].strip().lower().translate(str.maketrans('', '', string.punctuation))
         list_of_candidates = [alias.lower().translate(str.maketrans('', '', string.punctuation)) for alias in self._remove_prefixes(doc["answer"]["aliases"])]
-        return {"em": float(continuation in list_of_candidates)}
+        def match(candidate):
+            return continuation in candidate
+        return {"em": float(any(match(candidate) for candidate in list_of_candidates))}
 
     def aggregation(self):
         return {
